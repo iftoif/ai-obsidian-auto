@@ -15,6 +15,8 @@ fi
 if [ ! -d "$REPO/.git" ]; then
   echo "初始化 Wiki Git 仓库: $REPO" >&2
   git init -q "$REPO"
+  # 强制本地分支命名为 main（不依赖 git 全局 init.defaultBranch 配置）
+  git -C "$REPO" branch -M main 2>/dev/null || true
   git -C "$REPO" config user.name  "obsidian-auto" 2>/dev/null || true
   git -C "$REPO" config user.email "obsidian-auto@localhost" 2>/dev/null || true
 fi
@@ -45,9 +47,10 @@ fi
 git -C "$REPO" commit -m "chore(wiki): sync knowledge layers $(date +%Y-%m-%d)" >/dev/null
 # push：无 remote（全新部署纯本地）只 commit 不 push；
 #      遇远端有新提交（非 fast-forward）先 pull --rebase 再推；仍失败告警但不阻塞
+# push 用 HEAD:main 显式指定目标分支，不依赖本地分支名
 if git -C "$REPO" remote | grep -q . 2>/dev/null; then
-  if ! git -C "$REPO" push origin main 2>/dev/null; then
+  if ! git -C "$REPO" push origin HEAD:main 2>/dev/null; then
     git -C "$REPO" pull --rebase origin main 2>/dev/null || true
-    git -C "$REPO" push origin main 2>/dev/null || echo "⚠️ Wiki Git push 失败（远端可能有冲突）" >&2
+    git -C "$REPO" push origin HEAD:main 2>/dev/null || echo "⚠️ Wiki Git push 失败（远端可能有冲突）" >&2
   fi
 fi

@@ -44,11 +44,13 @@ if [ -d "$NODES_DIR" ]; then
       continue
     fi
     # 注册源完整性校验 2：JSON 严格解析 + 必填字段类型/长度/格式
-    if ! python3 - "$f" <<'PYEOF' 2>/dev/null
-import json, re, sys
+    # role 白名单可配置：NODE_ROLE_ALLOWLIST="workstation server ro"（空格分隔）
+    if ! python3 - "$f" "${NODE_ROLE_ALLOWLIST:-workstation server ro}" <<'PYEOF' 2>/dev/null
+import json, re, sys, os
 d = json.load(open(sys.argv[1]))
+roles = set(sys.argv[2].split())
 assert isinstance(d.get("hostname", ""), str) and 1 <= len(d["hostname"]) <= 64, "bad hostname"
-assert d.get("role") in ("workstation", "server", "ro"), "bad role"
+assert d.get("role") in roles, "bad role"
 ip = d.get("lan_ip", "")
 assert re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip), "bad lan_ip"
 assert all(0 <= int(x) <= 255 for x in ip.split(".")), "lan_ip octet out of range"
@@ -80,9 +82,11 @@ then
     NODE_PUBKEY=$(python3 -c 'import json; print(json.load(open("'"$f"'")).get("ssh_pubkey",""))' 2>/dev/null)
 
     # 建立 SSH 信任（公钥加 authorized_keys，服务器可主动配置新机器）
-    # 最小化格式校验：只接受合法 SSH 公钥形态，拒绝换行注入/多行内容
+    # 公钥校验：1) 必须单行（拒绝换行注入）2) ssh-keygen 实测可解析
+    # （支持 rsa/ed25519/ecdsa/sk-*/cert-* 全部 OpenSSH 类型，比正则 allowlist 更兼容）
     if [ -n "$NODE_PUBKEY" ] && [ "$NODE_PUBKEY" != "" ]; then
-      if echo "$NODE_PUBKEY" | grep -Eq '^ssh-(rsa|ed25519|ecdsa) [A-Za-z0-9+/]+={0,2}( [A-Za-z0-9_.-]+)?$'; then
+      if [ "$(printf '%s\n' "$NODE_PUBKEY" | wc -l | tr -d ' ')" -eq 1 ] && \
+         printf '%s\n' "$NODE_PUBKEY" | ssh-keygen -lf - >/dev/null 2>&1; then
         # 并发一致性：flock 保护 authorized_keys 读写（防多实例同时写）
         (
           flock -x 200
