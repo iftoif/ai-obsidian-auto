@@ -437,6 +437,22 @@ _chroma_client = None
 _chroma_collection = None
 
 
+def _get_embedding_function():
+    """返回多语言 embedding 函数（默认 bge-small-zh 中文模型）。
+
+    中文库用英文默认模型（all-MiniLM-L6-v2）时语义排序接近随机；
+    用 OBSIDIAN_CHROMA_EMBEDDING_MODEL 环境变量可换（如 BAAI/bge-m3）。
+    模型不可用（未装 sentence-transformers / 下载失败）时回退 None（用 chromadb 默认）。
+    """
+    model = os.environ.get("OBSIDIAN_CHROMA_EMBEDDING_MODEL", "BAAI/bge-small-zh-v1.5")
+    try:
+        from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+        return SentenceTransformerEmbeddingFunction(model_name=model)
+    except Exception as e:
+        print(f"  [chroma] 中文 embedding 不可用（{e}），回退默认英文模型", file=sys.stderr)
+        return None
+
+
 def _get_chroma():
     global _chroma_client, _chroma_collection
     if _chroma_client is not None:
@@ -456,6 +472,7 @@ def _get_chroma():
         _chroma_collection = _chroma_client.create_collection(
             name="obsidian_notes",
             metadata={"hnsw:space": "cosine"},
+            embedding_function=_get_embedding_function(),
         )
     return _chroma_collection
 

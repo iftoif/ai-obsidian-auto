@@ -59,7 +59,14 @@ if [ ! -x "$VENV/bin/python3" ]; then
     "$VENV/bin/pip" install -q chromadb 2>/dev/null || echo "⚠️ chromadb 安装失败（语义搜索不可用，FTS5 正常）" >&2
   fi
 else
-  echo "✅ venv 已存在，跳过创建"
+  echo "✅ venv 已存在"
+  # 补装检查：旧 venv（修复前创建的）可能缺 chromadb/sentence-transformers
+  if [ -x "$VENV/bin/pip" ]; then
+    if ! "$VENV/bin/pip" show chromadb >/dev/null 2>&1; then
+      echo "补装 chromadb（旧 venv 缺失）..."
+      "$VENV/bin/pip" install -q chromadb 2>/dev/null || echo "⚠️ chromadb 补装失败（语义搜索不可用）" >&2
+    fi
+  fi
 fi
 
 # 2. 创建 systemd 定时器（拉取 + 发现 + 蒸馏 + 索引 + Git + 自愈）
