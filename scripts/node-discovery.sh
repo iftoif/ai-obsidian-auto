@@ -15,6 +15,14 @@ set -uo pipefail
 # authorized_keys 写入加固：umask 077（新文件默认仅本人可读写）
 umask 077
 
+
+# 配置兜底：优先环境变量（systemd 注入），回退 source 仓库 .env（手工部署路径）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ -f "$REPO_DIR/.env" ]; then
+  set -a; . "$REPO_DIR/.env"; set +a
+fi
+
 VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 NODES_DIR="$VAULT/.hermes-nodes"
 REGISTRY="$HOME/.hermes/data/nodes-registry.json"

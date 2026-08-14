@@ -7,6 +7,14 @@
 #   OBSIDIAN_VAULT_PATH — 服务器 vault 路径（默认 $HOME/obsidian）
 set -uo pipefail
 
+
+# 配置兜底：优先环境变量（systemd 注入），回退 source 仓库 .env（手工部署路径）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ -f "$REPO_DIR/.env" ]; then
+  set -a; . "$REPO_DIR/.env"; set +a
+fi
+
 PRIMARY_MAC_IP="${PRIMARY_MAC_IP:-}"
 SSH_USER="${SSH_USER:-}"
 # 服务器主机名：优先环境变量，回退系统 hostname（避免空串导致 case 模式 ** 匹配一切）

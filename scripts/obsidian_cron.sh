@@ -3,6 +3,14 @@
 # 被 systemd timer 调用（setup-server 注入 OBSIDIAN_VAULT_PATH / HERMES_HOME）
 set -euo pipefail
 
+
+# 配置兜底：优先环境变量（systemd 注入），回退 source 仓库 .env（手工部署路径）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ -f "$REPO_DIR/.env" ]; then
+  set -a; . "$REPO_DIR/.env"; set +a
+fi
+
 export OBSIDIAN_VAULT_PATH="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 PYBIN="$HERMES_HOME/obsidian-backup-env/bin/python3"

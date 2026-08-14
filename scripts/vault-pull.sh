@@ -8,9 +8,17 @@
 #   OBSIDIAN_VAULT_PATH — 服务器 vault 路径（默认 $HOME/obsidian）
 set -uo pipefail
 
-MAC_USER="${MAC_USER:-$SSH_USER}"
+# 配置兜底：优先环境变量（systemd 注入），回退 source 仓库 .env（手工部署路径）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ -f "$REPO_DIR/.env" ]; then
+  set -a; . "$REPO_DIR/.env"; set +a
+fi
+
+# 注意顺序：先初始化基础变量，再做嵌套回退（避免 set -u 下 unbound）
 PRIMARY_MAC_IP="${PRIMARY_MAC_IP:-}"
 SSH_USER="${SSH_USER:-}"
+MAC_USER="${MAC_USER:-${SSH_USER:-}}"
 SERVER_VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 LOG="$HOME/.hermes/logs/vault-pull.log"
 

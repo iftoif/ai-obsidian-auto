@@ -53,8 +53,7 @@ vim .env   # 填入 OBSIDIAN_VAULT_PATH / PRIMARY_MAC_IP / SSH_USER 等
 |------|------|
 | `obsidian_backup.py` | SQLite FTS5（全库）+ Chroma（Wiki 高信号层） |
 | `obsidian_cron.sh` | 增量索引入口 |
-| `server-wiki-chroma.sh` | Chroma 重建 service 入口 |
-| `wiki_chroma_rebuild.sh` | Chroma 重建 |
+| `server-wiki-chroma.sh` | Chroma 重建 service 入口（被 obsidian-server-chroma.timer 每周调度） |
 
 ### 备份/自愈层
 
