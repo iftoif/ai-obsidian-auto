@@ -11,8 +11,11 @@ import obsidian_backup as ob
 
 
 def _has_st() -> bool:
+    # 必须验证 sentence_transformers 包本身可用（chromadb 自带
+    # SentenceTransformerEmbeddingFunction 类但依赖外部包，CI 只装
+    # chromadb 时会 import 成功但运行时 ValueError）
     try:
-        from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction  # noqa
+        import sentence_transformers  # noqa
         return True
     except Exception:
         return False
