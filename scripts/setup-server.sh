@@ -15,10 +15,10 @@ else
   exit 1
 fi
 
-# 验证必填项
-[ -n "${OBSIDIAN_VAULT_PATH}" ] || { echo "❌ 请填写 OBSIDIAN_VAULT_PATH"; exit 1; }
-[ -n "${PRIMARY_MAC_IP}" ] || { echo "❌ 请填写 PRIMARY_MAC_IP"; exit 1; }
-[ -n "${SSH_USER}" ] || { echo "❌ 请填写 SSH_USER"; exit 1; }
+# 验证必填项（:- 形式：变量未定义时输出友好错误，不触发 set -u unbound）
+[ -n "${OBSIDIAN_VAULT_PATH:-}" ] || { echo "❌ 请填写 OBSIDIAN_VAULT_PATH"; exit 1; }
+[ -n "${PRIMARY_MAC_IP:-}" ] || { echo "❌ 请填写 PRIMARY_MAC_IP"; exit 1; }
+[ -n "${SSH_USER:-}" ] || { echo "❌ 请填写 SSH_USER"; exit 1; }
 
 echo "===== AI Obsidian Auto 服务器部署 ====="
 echo "Vault: ${OBSIDIAN_VAULT_PATH}"

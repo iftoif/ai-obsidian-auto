@@ -104,7 +104,8 @@ run_distill() {
     failed=1
   fi
   # 空输出或只有 session_id 也是失败
-  local lines=$(wc -l < "$out_file" 2>/dev/null || echo 0)
+  local lines
+  lines=$(wc -l < "$out_file" 2>/dev/null || echo 0)
   if [ "$lines" -le 2 ]; then
     failed=1
   fi
