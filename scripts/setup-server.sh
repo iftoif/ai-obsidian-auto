@@ -55,6 +55,8 @@ if [ ! -x "$VENV/bin/python3" ]; then
   python3 -m venv "$VENV" || { echo "⚠️ venv 创建失败（无 python3-venv？），索引/Chroma 将在首次运行时报错" >&2; }
   if [ -x "$VENV/bin/pip" ]; then
     "$VENV/bin/pip" install -q zstandard 2>/dev/null || echo "⚠️ zstandard 安装失败（DSH 导出将跳过）" >&2
+    # chromadb 用于语义搜索（周度 Chroma 重建）；失败不阻断部署（FTS5 仍可用）
+    "$VENV/bin/pip" install -q chromadb 2>/dev/null || echo "⚠️ chromadb 安装失败（语义搜索不可用，FTS5 正常）" >&2
   fi
 else
   echo "✅ venv 已存在，跳过创建"

@@ -16,8 +16,11 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 PYBIN="$HERMES_HOME/obsidian-backup-env/bin/python3"
 SCRIPT="$SCRIPT_DIR/obsidian_backup.py"   # 同目录互调，git pull 更新立即生效
 
+# set -e 下 $(...) 内命令失败会直接退出（EXIT=$? 不可达）→ 临时关 -e 捕获退出码
+set +e
 OUTPUT=$(OBSIDIAN_CHROMA_ENABLED=0 "$PYBIN" "$SCRIPT" --quiet 2>&1)
 EXIT=$?
+set -e
 
 if [ $EXIT -ne 0 ]; then
   echo "❌ Obsidian 备份失败 (exit=$EXIT)"

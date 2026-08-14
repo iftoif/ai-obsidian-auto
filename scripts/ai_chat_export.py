@@ -89,19 +89,23 @@ def safe(value: str) -> str:
     return value.replace("\\", "\\\\").replace("`", "\\`")
 
 
-def redact_for_raw_log(text: str, source: str) -> str:
-    """Store detected secrets in macOS Keychain and replace with SecretRefs."""
+def redact_for_raw_log(text: str, source: str) -> tuple[str, bool]:
+    """Store detected secrets in macOS Keychain and replace with SecretRefs.
+
+    返回 (text, ok)：ok=False 表示脱敏不可用（fail-closed），调用方
+    不应标记为已导出（下次重试）。用元组显式信号，不用文本嗅探。
+    """
     try:
         scripts_dir = Path(__file__).resolve().parent
         if str(scripts_dir) not in sys.path:
             sys.path.insert(0, str(scripts_dir))
         from redact_secrets import redact_text  # type: ignore
-        return redact_text(text, source=source, store=True)
+        return redact_text(text, source=source, store=True), True
     except Exception as e:
         # fail-closed：脱敏不可用时绝不把可能含密钥的原文写进 Raw
         print(f"⚠️ redact_for_raw_log 失败（{e}），消息以 [REDACT-UNAVAILABLE] 标记",
               file=sys.stderr)
-        return "[REDACT-UNAVAILABLE]（脱敏不可用，原文未写入 Raw）"
+        return "[REDACT-UNAVAILABLE]（脱敏不可用，原文未写入 Raw）", False
 
 
 def text_from_content(content: Any) -> str:
@@ -304,8 +308,7 @@ def append_entry(vault: Path, tool: str, roll: dict[str, dict[str, int]], ts: dt
     )
     if cwd:
         body += f"  \n> cwd: `{safe(cwd)}`"
-    text = redact_for_raw_log(text, source=f"{tool} session={session} {source}:{line_no}")
-    redact_ok = not text.startswith("[REDACT-UNAVAILABLE]")
+    text, redact_ok = redact_for_raw_log(text, source=f"{tool} session={session} {source}:{line_no}")
     body += "\n\n" + text.strip() + "\n\n"
     b = len(body.encode("utf-8"))
     # 滚动：当前文件已有内容且追加后超限，或单条消息本身就超限（避免单文件无限膨胀）

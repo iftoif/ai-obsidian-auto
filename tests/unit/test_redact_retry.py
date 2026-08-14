@@ -11,7 +11,7 @@ import ai_chat_export as ae
 def test_append_entry_returns_false_on_redact_failure():
     """redact 失败（marker）→ 返回 False → 调用方不入 seen（下次重试）"""
     orig = ae.redact_for_raw_log
-    ae.redact_for_raw_log = lambda text, source: '[REDACT-UNAVAILABLE]'
+    ae.redact_for_raw_log = lambda text, source: ('[REDACT-UNAVAILABLE]', False)
     try:
         vault = Path(tempfile.mkdtemp())
         roll = {}
@@ -43,7 +43,7 @@ def test_export_tool_retries_failed_redact():
     state_dir.mkdir(parents=True)
     os.environ['CLAUDE_CONFIG_DIR'] = str(tmp / '.claude')
     orig = ae.redact_for_raw_log
-    ae.redact_for_raw_log = lambda text, source: '[REDACT-UNAVAILABLE]'
+    ae.redact_for_raw_log = lambda text, source: ('[REDACT-UNAVAILABLE]', False)
     try:
         # 第一次：redact 失败 → 消息被写 marker 但不入 seen
         _, _, exported1 = ae.export_tool('Claude', vault, state_dir)
