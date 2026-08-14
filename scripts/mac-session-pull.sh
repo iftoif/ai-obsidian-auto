@@ -77,6 +77,8 @@ if [ -d "$NODES_DIR" ]; then
     [ -z "$NODE_USER" ] && NODE_USER="$SSH_USER"
     NODE_HOST=$(python3 -c 'import json; print(json.load(open("'"$f"'")).get("hostname","?"))' 2>/dev/null)
     [ -z "$NODE_IP" ] && continue
+    # 跳过主 Mac 自身的注册标记（第 1 段已单独处理，避免重复拉取）
+    [ -n "$PRIMARY_MAC_IP" ] && [ "$NODE_IP" = "$PRIMARY_MAC_IP" ] && continue
     pull_node "$NODE_USER" "$NODE_IP" "$NODE_HOST"
   done
 fi

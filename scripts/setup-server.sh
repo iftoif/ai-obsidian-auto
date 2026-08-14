@@ -55,7 +55,7 @@ Environment=\"HERMES_HOME=${HERMES_HOME:-$HOME/.hermes}\""
 
 # 写一个 service + timer 的辅助函数
 write_unit() {
-  local name="$1" script="$2" schedule="$3"
+  local name="$1" script="$2" schedule="$3" bootsec="${4:-10min}"
   {
     echo "[Unit]"
     echo "Description=$name"
@@ -67,7 +67,7 @@ write_unit() {
 Description=Timer for $name
 
 [Timer]
-OnBootSec=10min
+OnBootSec=$bootsec
 OnUnitActiveSec=$schedule
 
 [Install]
@@ -76,10 +76,10 @@ TEOF
   echo "✅ $name 单元已生成"
 }
 
-write_unit "vault-pull" "vault-pull.sh" "1h"
-write_unit "node-discovery" "node-discovery.sh" "1h"
-write_unit "mac-session-pull" "mac-session-pull.sh" "1h"
-write_unit "hermes-self-heal" "hermes-self-heal.sh" "1h"
+write_unit "vault-pull" "vault-pull.sh" "1h" "12min"
+write_unit "node-discovery" "node-discovery.sh" "1h" "10min"
+write_unit "mac-session-pull" "mac-session-pull.sh" "1h" "15min"
+write_unit "hermes-self-heal" "hermes-self-heal.sh" "1h" "5min"
 
 # 蒸馏/索引/Chroma 用固定时刻（非固定间隔）
 {
@@ -116,15 +116,15 @@ cat > "$SYSTEMD/obsidian-server-index.timer" <<TEOF
 Description=Timer for obsidian-server-index
 
 [Timer]
-OnBootSec=15min
-OnUnitActiveSec=1h
+OnCalendar=*-*-* *:10:00
+Persistent=true
 
 [Install]
 WantedBy=timers.target
 TEOF
 echo "✅ obsidian-server-index 单元已生成"
 
-write_unit "wiki-git-autocommit" "wiki_git_autocommit.sh" "1h"
+write_unit "wiki-git-autocommit" "wiki_git_autocommit.sh" "1h" "20min"
 
 # Chroma 语义索引（每周日 04:00）
 {

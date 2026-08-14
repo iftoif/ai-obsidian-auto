@@ -84,7 +84,7 @@ if [ -x "$NEW_HERMES" ]; then
 fi
 
 # 4. 更新 systemd 服务的 ExecStart（把旧 python 路径换成新路径）
-OLD_PATTERN="$HOME/.hermes/hermes-agent/venv/bin/python"
+OLD_PATTERN="$HERMES_HOME/hermes-agent/venv/bin/python"
 changed=0
 for svc in $GATEWAY_SERVICES; do
   f="$SYSTEMD_DIR/$svc.service"

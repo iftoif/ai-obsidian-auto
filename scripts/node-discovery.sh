@@ -96,8 +96,11 @@ then
       if [ "$(printf '%s\n' "$NODE_PUBKEY" | wc -l | tr -d ' ')" -eq 1 ] && \
          printf '%s\n' "$NODE_PUBKEY" | ssh-keygen -lf - >/dev/null 2>&1; then
         # 并发一致性：flock 保护 authorized_keys 读写（防多实例同时写）
+        # macOS 无 flock 命令时跳过锁（目标平台 Linux 服务器不受影响）
         (
-          flock -x 200
+          if command -v flock >/dev/null 2>&1; then
+            flock -x 200
+          fi
           if ! grep -qF "$NODE_PUBKEY" "$AUTH_KEYS" 2>/dev/null; then
             echo "$NODE_PUBKEY" >> "$AUTH_KEYS"
             echo "🔑 已建立 SSH 信任：$NODE_HOST 公钥已加入 authorized_keys" >> "$LOG"

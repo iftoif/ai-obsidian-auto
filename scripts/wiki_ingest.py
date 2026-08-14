@@ -19,8 +19,8 @@ from pathlib import Path
 
 
 def default_vault() -> Path:
-    if sys.platform == "darwin":
-        return Path.home() / "obsidian"
+    # 优先环境变量 OBSIDIAN_VAULT_PATH；未配置时回退 ~/obsidian
+    # （Mac iCloud 用户可在 .env 中显式指定 iCloud 路径）
     return Path(os.environ.get("OBSIDIAN_VAULT_PATH", str(Path.home() / "obsidian")))
 
 
