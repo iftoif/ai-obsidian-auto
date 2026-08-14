@@ -449,7 +449,13 @@ def _get_embedding_function():
         from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
         return SentenceTransformerEmbeddingFunction(model_name=model)
     except Exception as e:
-        print(f"  [chroma] 中文 embedding 不可用（{e}），回退默认英文模型", file=sys.stderr)
+        # fail-loudly：中文语义排序不可靠必须明确提示（比静默回退好）
+        # 修复方式：pip install sentence-transformers（setup-server 会自动装）
+        print(
+            "⚠️ [chroma] 中文 embedding 不可用（sentence-transformers 未安装或模型下载失败），"
+            f"语义搜索将用英文模型（中文排序不可靠）——请 pip install sentence-transformers：{e}",
+            file=sys.stderr,
+        )
         return None
 
 

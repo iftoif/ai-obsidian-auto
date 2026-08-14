@@ -57,6 +57,9 @@ if [ ! -x "$VENV/bin/python3" ]; then
     "$VENV/bin/pip" install -q zstandard 2>/dev/null || echo "⚠️ zstandard 安装失败（DSH 导出将跳过）" >&2
     # chromadb 用于语义搜索（周度 Chroma 重建）；失败不阻断部署（FTS5 仍可用）
     "$VENV/bin/pip" install -q chromadb 2>/dev/null || echo "⚠️ chromadb 安装失败（语义搜索不可用，FTS5 正常）" >&2
+    # sentence-transformers 用于中文 embedding（bge 模型）；约 2GB（含 torch），
+    # 缺失时语义搜索会静默回退英文模型（中文排序不可靠）
+    "$VENV/bin/pip" install -q sentence-transformers 2>/dev/null || echo "⚠️ sentence-transformers 安装失败（中文语义排序不可靠，FTS5 正常）" >&2
   fi
 else
   echo "✅ venv 已存在"
@@ -65,6 +68,10 @@ else
     if ! "$VENV/bin/pip" show chromadb >/dev/null 2>&1; then
       echo "补装 chromadb（旧 venv 缺失）..."
       "$VENV/bin/pip" install -q chromadb 2>/dev/null || echo "⚠️ chromadb 补装失败（语义搜索不可用）" >&2
+    fi
+    if ! "$VENV/bin/pip" show sentence-transformers >/dev/null 2>&1; then
+      echo "补装 sentence-transformers（旧 venv 缺失，中文语义排序需要）..."
+      "$VENV/bin/pip" install -q sentence-transformers 2>/dev/null || echo "⚠️ sentence-transformers 补装失败（中文语义排序不可靠）" >&2
     fi
   fi
 fi
