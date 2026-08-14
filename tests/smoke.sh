@@ -85,6 +85,14 @@ HOME="$TESTROOT/home" OBSIDIAN_VAULT_PATH="$TESTROOT/vault" bash "$REPO/scripts/
 grep -q "$PUB" "$TESTROOT/home/.ssh/authorized_keys" 2>/dev/null && ok "合法公钥自动信任" || bad "合法公钥未信任"
 grep -q "evil" "$TESTROOT/home/.ssh/authorized_keys" 2>/dev/null && bad "非法节点被信任" || ok "非法节点被拒"
 
+# ── 3.5 .env.example 可被 source（防回归：尖括号占位符被 bash 当重定向）──
+step "3.5 .env.example source 检查"
+if bash -c 'set -e; source "'"$REPO/.env.example"'"; true' 2>/dev/null; then
+  ok ".env.example 可 source（无语法错误）"
+else
+  bad ".env.example source 失败（占位符含未加引号的特殊字符）"
+fi
+
 # ── 4. Python 语法 ──
 step "4. Python 语法编译"
 if python3 -m py_compile "$REPO"/scripts/*.py; then
