@@ -23,11 +23,12 @@ if [ -f "$REPO_DIR/.env" ]; then
   set -a; . "$REPO_DIR/.env"; set +a
 fi
 
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 NODES_DIR="$VAULT/.hermes-nodes"
-REGISTRY="$HOME/.hermes/data/nodes-registry.json"
-LOG="$HOME/.hermes/logs/node-discovery.log"
-HERMES_SEND="$HOME/.hermes/hermes-agent/venv/bin/hermes"
+REGISTRY="$HERMES_HOME/data/nodes-registry.json"
+LOG="$HERMES_HOME/logs/node-discovery.log"
+HERMES_SEND="$HERMES_HOME/hermes-agent/venv/bin/hermes"
 AUTH_KEYS="$HOME/.ssh/authorized_keys"
 
 mkdir -p "$(dirname "$LOG")" "$(dirname "$REGISTRY")" "$HOME/.ssh"

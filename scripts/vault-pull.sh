@@ -20,7 +20,8 @@ PRIMARY_MAC_IP="${PRIMARY_MAC_IP:-}"
 SSH_USER="${SSH_USER:-}"
 MAC_USER="${MAC_USER:-${SSH_USER:-}}"
 SERVER_VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
-LOG="$HOME/.hermes/logs/vault-pull.log"
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+LOG="$HERMES_HOME/logs/vault-pull.log"
 
 if [ -z "$PRIMARY_MAC_IP" ] || [ -z "$SSH_USER" ]; then
   echo "⚠️ 未配置 PRIMARY_MAC_IP / SSH_USER，跳过"

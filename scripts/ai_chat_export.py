@@ -87,8 +87,11 @@ def redact_for_raw_log(text: str, source: str) -> str:
             sys.path.insert(0, str(scripts_dir))
         from redact_secrets import redact_text  # type: ignore
         return redact_text(text, source=source, store=True)
-    except Exception:
-        return text
+    except Exception as e:
+        # fail-closed：脱敏不可用时绝不把可能含密钥的原文写进 Raw
+        print(f"⚠️ redact_for_raw_log 失败（{e}），消息以 [REDACT-UNAVAILABLE] 标记",
+              file=sys.stderr)
+        return "[REDACT-UNAVAILABLE]（脱敏不可用，原文未写入 Raw）"
 
 
 def text_from_content(content: Any) -> str:

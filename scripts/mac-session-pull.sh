@@ -22,7 +22,8 @@ SERVER_HOSTNAME="${SERVER_HOSTNAME:-$(hostname -s 2>/dev/null || hostname 2>/dev
 
 VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 NODES_DIR="$VAULT/.hermes-nodes"
-LOG="$HOME/.hermes/logs/mac-session-pull.log"
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+LOG="$HERMES_HOME/logs/mac-session-pull.log"
 
 mkdir -p "$(dirname "$LOG")" "$HOME/.claude/projects" "$HOME/.codex/sessions" "$HOME/.pi/agent/sessions" "$HOME/.dsh/sessions"
 exec >>"$LOG" 2>&1
