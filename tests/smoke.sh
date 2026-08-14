@@ -55,7 +55,7 @@ fi
 grep -q "部署完成" "$TESTROOT/setup.log" && ok "打印部署完成" || bad "未打印部署完成"
 [ -f "$TESTROOT/crontab-received.txt" ] && grep -q "export-all.sh" "$TESTROOT/crontab-received.txt" && ok "crontab 收到 export-all 调度" || bad "crontab 未收到 export-all"
 UNIT_COUNT=$(ls "$TESTROOT/home/.config/systemd/user/"*.service 2>/dev/null | wc -l | tr -d ' ')
-[ "$UNIT_COUNT" -eq 8 ] && ok "8 个 service 生成（实得 $UNIT_COUNT）" || bad "service 数不对（实得 $UNIT_COUNT，应为 8）"
+[ "$UNIT_COUNT" -eq 8 ] && ok "8 个 service 生成（实得 ${UNIT_COUNT}）" || bad "service 数不对（实得 ${UNIT_COUNT}，应为 8）"
 grep -q "ExecStart=$TESTROOT/repo/scripts/vault-pull.sh" "$TESTROOT/home/.config/systemd/user/vault-pull.service" && ok "ExecStart 指向活代码路径" || bad "ExecStart 路径不对"
 grep -q "FALLBACK_PROVIDERS_CSV=deepseek" "$TESTROOT/home/.config/systemd/user/obsidian-server-distill.service" && ok "蒸馏 service 注入 fallback" || bad "fallback 未注入"
 

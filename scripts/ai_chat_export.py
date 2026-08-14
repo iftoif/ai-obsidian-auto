@@ -270,8 +270,11 @@ def init_roll(vault: Path, tool: str) -> dict[str, dict[str, int]]:
     return roll
 
 
-def event_hash(tool: str, session: str, role: str, text: str) -> str:
-    return hashlib.sha256(f"{tool}|{session}|{role}|{text}".encode("utf-8", errors="replace")).hexdigest()
+def event_hash(tool: str, session: str, role: str, text: str, line_no: int | None = None) -> str:
+    # 含行号：同一 session 内两条完全相同文本但不同位置的消息都会被保留
+    # （不含行号时第二条被当作重复吞掉——信息丢失）
+    key = f"{tool}|{session}|{role}|{line_no if line_no is not None else ''}|{text}"
+    return hashlib.sha256(key.encode("utf-8", errors="replace")).hexdigest()
 
 
 def append_entry(vault: Path, tool: str, roll: dict[str, dict[str, int]], ts: dt.datetime, role: str, text: str, source: Path, line_no: int, session: str, cwd: str) -> None:
@@ -504,7 +507,7 @@ def export_tool(tool: str, vault: Path, state_dir: Path) -> tuple[int, int, int]
     line_cache: dict[Path, dict[int, str]] = {}
     for source, line_no, ts, role, text, session, cwd in records:
         files_seen.add(str(source))
-        h = event_hash(tool, session, role, text)
+        h = event_hash(tool, session, role, text, line_no)
         if h in seen_set:
             continue
         # 提取图片：重新读原始行，落盘到 assets 并追加引用。

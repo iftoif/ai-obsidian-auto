@@ -42,11 +42,7 @@ mkdir -p ~/.claude/projects ~/.codex/sessions ~/.pi/agent/sessions ~/.dsh/sessio
 
 ## 2. 脚本部署
 
-把本仓库 `scripts/` 下所有文件复制到服务器 `~/.hermes/scripts/`，并 `chmod +x`。
-
-```bash
-chmod +x ~/.hermes/scripts/*.sh ~/.hermes/scripts/*.py
-```
+脚本直接从**仓库路径**运行（`git pull` 更新立即生效，无需复制到任何目录）。git clone 后 `cd` 进仓库即可，唯一要做的配置是下一步的 `.env`。
 
 ### 2.1 配置（唯一来源：.env）
 
@@ -61,8 +57,8 @@ chmod +x ~/.hermes/scripts/*.sh ~/.hermes/scripts/*.py
 | `PRIMARY_MAC_IP` | 主 Mac 的局域网 IP | `192.168.x.x` |
 | `SSH_USER` | 主 Mac SSH 登录名 | `your_user` |
 | `MAC_USER` | 主 Mac 本地用户名（iCloud 路径用，留空则等于 SSH_USER） | `your_user` |
-| `AI_DISTILL_PROVIDER` | 蒸馏主模型 provider | `your-provider` |
-| `AI_DISTILL_MODEL` | 蒸馏主模型 | `your-model` |
+| `AI_DISTILL_PROVIDER` | 蒸馏主模型 provider | `openai-codex` |
+| `AI_DISTILL_MODEL` | 蒸馏主模型 | `gpt-5.6-luna` |
 | `DEEPSEEK_API_KEY` / `KIMI_API_KEY` | fallback 链 key（可选） | — |
 | `RCLONE_REMOTE` | rclone 备份远程:目录（可选） | `crypt_remote:backup/obsidian` |
 

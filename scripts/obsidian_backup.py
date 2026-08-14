@@ -374,7 +374,7 @@ def delete_note_sqlite(conn, path: str):
 
 
 def search_sqlite(query: str, limit: int = 10) -> list[dict]:
-    """FTS5 全文搜索"""
+    """FTS5 全文搜索；无结果时 fallback LIKE（unicode61 分词对中文子串不友好）。"""
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     try:
@@ -388,10 +388,23 @@ def search_sqlite(query: str, limit: int = 10) -> list[dict]:
                LIMIT ?""",
             (query, limit),
         ).fetchall()
-        return [dict(r) for r in rows]
+        if rows:
+            return [dict(r) for r in rows]
     except sqlite3.OperationalError as e:
         print(f"  [fts error] {e}", file=sys.stderr)
-        return []
+
+    # fallback：LIKE 子串匹配（中文等无空格语言的关键场景）
+    like = f"%{query}%"
+    rows = conn.execute(
+        """SELECT path, title, summary, tags, mtime,
+                  substr(content, 1, 200) AS excerpt
+           FROM notes
+           WHERE content LIKE ? OR title LIKE ?
+           ORDER BY mtime DESC
+           LIMIT ?""",
+        (like, like, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 # ── ChromaDB（向量语义搜索） ─────────────────────────
