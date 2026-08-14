@@ -48,7 +48,10 @@ CHROMA_PATH = DATA_DIR / "chroma_db"
 CHROMA_MAX_RAW_BYTES = int(os.environ.get("OBSIDIAN_CHROMA_MAX_RAW_BYTES", "250000"))
 CHROMA_SKIP_RAW_CHAT_LOGS = os.environ.get("OBSIDIAN_CHROMA_SKIP_RAW_CHAT_LOGS", "1") != "0"
 CHROMA_PRIORITY_PREFIXES = ("Wiki/", "Context/", "Hermes/Lessons/", "Codex/Lessons/", "Shared/Lessons/", "Skills/")
-CHROMA_RAW_CHAT_PREFIXES = ("Hermes/Chat Logs/", "Codex/Chat Logs/")
+CHROMA_RAW_CHAT_PREFIXES = (
+    "Hermes/Chat Logs/", "Codex/Chat Logs/", "Claude/Chat Logs/",
+    "Pi/Chat Logs/", "DSH/Chat Logs/",
+)
 CHROMA_ENABLED = os.environ.get("OBSIDIAN_CHROMA_ENABLED", "1") != "0"
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -207,11 +210,12 @@ class Note:
         structured/high-density knowledge to avoid long raw chat logs causing
         slow incremental backups and noisy semantic retrieval.
         """
+        # 硬限制优先：超大文件/超长原文不索引（避免拖慢增量备份）
+        if self.size > CHROMA_MAX_RAW_BYTES:
+            return False
         if self.rel_path.startswith(CHROMA_PRIORITY_PREFIXES):
             return True
         if CHROMA_SKIP_RAW_CHAT_LOGS and self.rel_path.startswith(CHROMA_RAW_CHAT_PREFIXES):
-            return False
-        if self.size > CHROMA_MAX_RAW_BYTES:
             return False
         return True
 

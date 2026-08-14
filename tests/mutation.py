@@ -41,6 +41,18 @@ MUTATIONS = [
     ('search-like', 'scripts/obsidian_backup.py',
      'WHERE content LIKE ? OR title LIKE ?', 'WHERE 1=0  # bug: LIKE fallback 被禁',
      'search', 'test_search_like_fallback'),
+    ('chroma-size-order', 'scripts/obsidian_backup.py',
+     'if self.size > CHROMA_MAX_RAW_BYTES:', 'if False:',
+     'chroma_skips_large_raw', 'test_chroma_skips_large_raw'),
+    ('chroma-raw-prefix', 'scripts/obsidian_backup.py',
+     'CHROMA_RAW_CHAT_PREFIXES = (', 'CHROMA_RAW_CHAT_PREFIXES = ()',
+     'chroma_skips_low_value', 'test_chroma_skips_low_value_raw_chat'),
+    ('dsh-text-io', 'scripts/ai_chat_export.py',
+     'text_io', 'text',
+     'dsh_records_parse_basic', 'test_dsh_records_parse_basic'),
+    ('dsh-hello', 'scripts/ai_chat_export.py',
+     's in {"hi", "hello", "say hi"}', 's in {"hi", "hello", "你好", "say hi"}',
+     'dsh_records_parse_basic', 'test_dsh_records_parse_basic'),
 ]
 
 def main():
@@ -56,8 +68,9 @@ def main():
             continue
         target.write_text(s.replace(old, new, 1))
         r = run_pytest(selector)
-        # 应被抓住：变异后目标测试失败（failed 数可能是 1 或更多）
-        failed = target_test in r.stdout and ' failed' in r.stdout
+        # 应被抓住：变异后目标测试失败，或 collection error（变异破坏代码结构）
+        failed = (target_test in r.stdout and ' failed' in r.stdout) or \
+                 ('Interrupted:' in r.stdout and 'errors during collection' in r.stdout)
         if failed:
             print(f'  ✅ {name}: 变异被测试抓住 (killed)')
             killed += 1
