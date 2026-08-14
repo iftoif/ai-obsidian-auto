@@ -59,7 +59,8 @@ def parse_time(value: Any) -> dt.datetime:
             ts /= 1e6
         elif ts > 1e12:
             ts /= 1000
-        if ts > 4_000_000_000:  # 超出合理范围（>2096 年）
+        # 负数或超出合理范围（>2096 年）→ 脏数据，兜底当前时间
+        if ts < 0 or ts > 4_000_000_000:
             return dt.datetime.now(TZ)
         try:
             return dt.datetime.fromtimestamp(ts, TZ)
