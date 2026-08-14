@@ -6,7 +6,10 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 LOCK="$HERMES_HOME/data/wiki-git-autocommit.lock"
 mkdir -p "$REPO" "$(dirname "$LOCK")"
 exec 9>"$LOCK"
-flock -n 9 || exit 0
+# Linux 用 flock 防并发；macOS 无 flock 命令时跳过锁（本脚本目标平台是 Linux 服务器）
+if command -v flock >/dev/null 2>&1; then
+  flock -n 9 || exit 0
+fi
 
 # 仓库自动初始化：全新部署时 $REPO 可能只是空目录（或不存在）
 if [ ! -d "$REPO/.git" ]; then
@@ -23,7 +26,16 @@ for d in Hermes/Lessons Codex/Lessons Claude/Lessons Pi/Lessons Shared/Lessons C
   fi
 done
 [ -f "$VAULT/CLAUDE.md" ] && cp "$VAULT/CLAUDE.md" "$REPO/CLAUDE.md"
-git -C "$REPO" add Wiki Hermes/Lessons Codex/Lessons Claude/Lessons Pi/Lessons Shared/Lessons Context Skills CLAUDE.md 2>/dev/null || true
+# 只 add 实际存在的路径：git add 多 pathspec 中任一不存在会整体失败（exit 128），
+# 错误被吞掉后所有文件都不暂存、脚本静默退出——知识库永不提交
+add_paths=()
+for p in Wiki Hermes/Lessons Codex/Lessons Claude/Lessons Pi/Lessons Shared/Lessons Context Skills; do
+  [ -e "$REPO/$p" ] && add_paths+=("$p")
+done
+[ -e "$REPO/CLAUDE.md" ] && add_paths+=("CLAUDE.md")
+if [ "${#add_paths[@]}" -gt 0 ]; then
+  git -C "$REPO" add "${add_paths[@]}" 2>/dev/null || true
+fi
 if git -C "$REPO" diff --cached --quiet; then exit 0; fi
 if git -C "$REPO" diff --cached --binary | grep -Eiq 'sk-[A-Za-z0-9]|tvly-|cookie[=:]|password[=:]|api[_-]?key[=:][^$]|bearer [A-Za-z0-9]|ghp_[A-Za-z0-9]|github_pat_|xox[baprs]-|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY'; then
   echo 'secret-like content detected; refusing commit' >&2

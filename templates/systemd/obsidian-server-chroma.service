@@ -1,0 +1,9 @@
+[Unit]
+Description=obsidian-server-chroma
+
+[Service]
+Type=oneshot
+Environment="OBSIDIAN_VAULT_PATH=%h/obsidian"
+Environment="HERMES_HOME=%h/.hermes"
+ExecStart=%h/.hermes/scripts/server-wiki-chroma.sh
+

@@ -129,9 +129,29 @@ echo "✅ obsidian-server-index 单元已生成"
 
 write_unit "wiki-git-autocommit" "wiki_git_autocommit.sh" "1h"
 
+# Chroma 语义索引（每周日 04:00）
+{
+  echo "[Unit]"
+  echo "Description=obsidian-server-chroma"
+  echo "$ENV_BLOCK"
+  echo "ExecStart=$REPO_DIR/scripts/server-wiki-chroma.sh"
+} > "$SYSTEMD/obsidian-server-chroma.service"
+cat > "$SYSTEMD/obsidian-server-chroma.timer" <<TEOF
+[Unit]
+Description=Timer for obsidian-server-chroma
+
+[Timer]
+OnCalendar=Sun 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+TEOF
+echo "✅ obsidian-server-chroma 单元已生成"
+
 # 3. 启用所有定时器
 systemctl --user daemon-reload
-for t in vault-pull node-discovery mac-session-pull hermes-self-heal obsidian-server-distill obsidian-server-index wiki-git-autocommit; do
+for t in vault-pull node-discovery mac-session-pull hermes-self-heal obsidian-server-distill obsidian-server-index wiki-git-autocommit obsidian-server-chroma; do
   systemctl --user enable "$t.timer"
   systemctl --user start "$t.timer"
   echo "✅ $t.timer 已启用"

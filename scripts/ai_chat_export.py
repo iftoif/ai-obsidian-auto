@@ -152,21 +152,32 @@ def _iter_images_from_content(content: Any) -> list[tuple[str, str]]:
     return images
 
 
-def _extract_image_refs(source, line_no, vault, tool, ts, session) -> list[str]:
-    """从明文 jsonl 源文件重读指定行，提取图片并落盘（DSH 等二进制源不适用）。"""
+def _extract_image_refs(source, line_no, vault, tool, ts, session, line_cache=None) -> list[str]:
+    """从明文 jsonl 源文件取指定行内容，提取图片并落盘（DSH 等二进制源不适用）。
+
+    line_cache: {source_path: {line_no: line_text}}，由调用方缓存整文件内容，
+    避免每条消息都重读整个源文件（O(n²) → O(n)）。
+    """
     refs: list[str] = []
     try:
-        with source.open(encoding="utf-8", errors="replace") as _fh:
-            for _i, _line in enumerate(_fh, 1):
-                if _i == line_no:
-                    _obj = json.loads(_line)
-                    _msg = _obj.get("message") if isinstance(_obj.get("message"), dict) else {}
-                    _imgs = _iter_images_from_content(_msg.get("content"))
-                    for _seq, (_mime, _data) in enumerate(_imgs, start=1):
-                        _link = save_image_to_assets(vault, tool, ts.date(), session, _data, _mime, _seq)
-                        if _link:
-                            refs.append(_link)
-                    break
+        _line = None
+        if line_cache is not None and source in line_cache:
+            _line = line_cache[source].get(line_no)
+        else:
+            with source.open(encoding="utf-8", errors="replace") as _fh:
+                for _i, _l in enumerate(_fh, 1):
+                    if _i == line_no:
+                        _line = _l
+                        break
+        if _line is None:
+            return refs
+        _obj = json.loads(_line)
+        _msg = _obj.get("message") if isinstance(_obj.get("message"), dict) else {}
+        _imgs = _iter_images_from_content(_msg.get("content"))
+        for _seq, (_mime, _data) in enumerate(_imgs, start=1):
+            _link = save_image_to_assets(vault, tool, ts.date(), session, _data, _mime, _seq)
+            if _link:
+                refs.append(_link)
     except Exception:
         pass
     return refs
@@ -275,7 +286,8 @@ def append_entry(vault: Path, tool: str, roll: dict[str, dict[str, int]], ts: dt
     text = redact_for_raw_log(text, source=f"{tool} session={session} {source}:{line_no}")
     body += "\n\n" + text.strip() + "\n\n"
     b = len(body.encode("utf-8"))
-    if st["size"] > 0 and st["size"] + b > MAX_NOTE_BYTES:
+    # 滚动：当前文件已有内容且追加后超限，或单条消息本身就超限（避免单文件无限膨胀）
+    if (st["size"] > 0 and st["size"] + b > MAX_NOTE_BYTES) or (st["size"] == 0 and b > MAX_NOTE_BYTES):
         st["part"] += 1
         st["size"] = 0
     p = note_path(vault, tool, day, st["part"])
@@ -485,6 +497,8 @@ def export_tool(tool: str, vault: Path, state_dir: Path) -> tuple[int, int, int]
     files_seen: set[str] = set()
     changed: set[Path] = set()
     exported = 0
+    # 图片重读的行缓存：按源文件惰性缓存全部行，避免每条消息 O(n) 重读（O(n²)→O(n)）
+    line_cache: dict[Path, dict[int, str]] = {}
     for source, line_no, ts, role, text, session, cwd in records:
         files_seen.add(str(source))
         h = event_hash(tool, session, role, text)
@@ -495,7 +509,14 @@ def export_tool(tool: str, vault: Path, state_dir: Path) -> tuple[int, int, int]
         # （DSH 的图片引用由导出层另行处理，不影响文本内容导出）。
         image_refs: list[str] = []
         if tool != "DSH":
-            image_refs = _extract_image_refs(source, line_no, vault, tool, ts, session)
+            # 惰性填充该源文件的行缓存（每个文件只读一次，O(n²)→O(n)）
+            if source not in line_cache:
+                try:
+                    with source.open(encoding="utf-8", errors="replace") as _fh:
+                        line_cache[source] = {_i: _l for _i, _l in enumerate(_fh, 1)}
+                except Exception:
+                    line_cache[source] = {}
+            image_refs = _extract_image_refs(source, line_no, vault, tool, ts, session, line_cache)
         if image_refs:
             text = text.strip() + "\n\n" + "\n".join(image_refs) if text.strip() else "\n".join(image_refs)
 
