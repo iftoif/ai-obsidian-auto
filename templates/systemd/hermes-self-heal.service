@@ -1,0 +1,6 @@
+[Unit]
+Description=Hermes self-heal check (auto rebind after reinstall)
+
+[Service]
+Type=oneshot
+ExecStart=%h/.hermes/scripts/hermes-self-heal.sh

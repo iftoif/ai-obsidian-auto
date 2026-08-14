@@ -1,0 +1,5 @@
+[Unit]
+Description=Commit and push server Obsidian knowledge layers
+[Service]
+Type=oneshot
+ExecStart=%h/.hermes/scripts/wiki_git_autocommit.sh

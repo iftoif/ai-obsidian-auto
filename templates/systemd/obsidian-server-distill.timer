@@ -1,0 +1,8 @@
+[Unit]
+Description=Run Obsidian incremental AI Wiki distillation every 4 hours
+[Timer]
+OnCalendar=*-*-* 01,05,09,13,17,21:20:00
+Persistent=true
+Unit=obsidian-server-distill.service
+[Install]
+WantedBy=default.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Push server Obsidian knowledge layers hourly
+[Timer]
+OnCalendar=*-*-* *:20:00
+Persistent=true
+Unit=wiki-git-autocommit.service
+[Install]
+WantedBy=default.target

@@ -1,0 +1,16 @@
+# 个人配置（含敏感信息，勿提交）
+.env
+.env.local
+.env.production
+.env.backup
+
+# macOS
+.DS_Store
+
+# 临时文件
+*.tmp
+*.log
+
+# Python
+__pycache__/
+*.pyc

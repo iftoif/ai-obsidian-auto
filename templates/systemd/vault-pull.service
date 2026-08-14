@@ -1,0 +1,6 @@
+[Unit]
+Description=Pull iCloud Vault from main Mac to server
+
+[Service]
+Type=oneshot
+ExecStart=%h/.hermes/scripts/vault-pull.sh

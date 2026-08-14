@@ -1,0 +1,5 @@
+[Unit]
+Description=Obsidian server SQLite incremental index
+[Service]
+Type=oneshot
+ExecStart=%h/.hermes/scripts/obsidian_cron.sh

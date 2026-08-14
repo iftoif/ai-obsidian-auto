@@ -1,0 +1,6 @@
+[Unit]
+Description=Obsidian server daily AI Wiki distillation
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=%h/.hermes/scripts/server-wiki-distill.sh

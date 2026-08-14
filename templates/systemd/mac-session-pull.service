@@ -1,0 +1,6 @@
+[Unit]
+Description=Pull Mac AI client sessions to server
+
+[Service]
+Type=oneshot
+ExecStart=%h/.hermes/scripts/mac-session-pull.sh

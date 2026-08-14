@@ -1,0 +1,6 @@
+[Unit]
+Description=Discover new nodes joined the ecosystem
+
+[Service]
+Type=oneshot
+ExecStart=%h/.hermes/scripts/node-discovery.sh

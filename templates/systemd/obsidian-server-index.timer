@@ -1,0 +1,8 @@
+[Unit]
+Description=Run Obsidian server SQLite index hourly
+[Timer]
+OnCalendar=*-*-* *:10:00
+Persistent=true
+Unit=obsidian-server-index.service
+[Install]
+WantedBy=timers.target
