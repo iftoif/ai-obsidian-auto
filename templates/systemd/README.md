@@ -1,18 +1,32 @@
 # templates/systemd/ — systemd user units 模板
 
-> 复制到服务器 ~/.config/systemd/user/ 后使用。所有路径已用 %h（用户家目录）替代真实路径。
-> 需要 Hermes Gateway 的服务（hermes-self-heal / node-discovery）按需启用。
+> ⚠️ **推荐用 `setup-server.sh` 自动生成 unit**（它会写入正确的仓库路径 + 环境变量注入）。
+> 本目录的模板仅供：1) 理解 unit 结构 2) 手工定制部署。手工使用时必须自己替换路径。
+
+## 手工部署注意（重要）
+
+模板里 `ExecStart=%h/.hermes/scripts/xxx.sh` 是**示例占位**——第十一轮起脚本不再拷贝到
+`~/.hermes/scripts/`，而是直接从**仓库路径**运行。手工部署请把每个 service 的 ExecStart 改为：
+
+```ini
+ExecStart=/home/<你的用户>/ai-obsidian-auto/scripts/mac-session-pull.sh
+```
+
+（即你的仓库 clone 目录下的 scripts/ 绝对路径。）
 
 ## 安装
 
 ```bash
 mkdir -p ~/.config/systemd/user
 cp templates/systemd/*.service templates/systemd/*.timer ~/.config/systemd/user/
+# ↑ 复制后必须逐个编辑 ExecStart 改成你的仓库路径（见上）
 
-# 核心：拉取 + 蒸馏 + 索引 + Git
+loginctl enable-linger $USER   # 无登录会话时定时器也运行
+
+# 核心：拉取 + 蒸馏 + 索引 + Git + Chroma
 systemctl --user enable --now mac-session-pull.timer vault-pull.timer
 systemctl --user enable --now obsidian-server-distill.timer obsidian-server-index.timer
-systemctl --user enable --now wiki-git-autocommit.timer
+systemctl --user enable --now wiki-git-autocommit.timer obsidian-server-chroma.timer
 
 # 可选：自动发现 + 自愈
 systemctl --user enable --now node-discovery.timer hermes-self-heal.timer
@@ -33,5 +47,5 @@ systemctl --user enable --now node-discovery.timer hermes-self-heal.timer
 
 ## 依赖
 
-- 蒸馏/索引/拉取脚本需在 ~/.hermes/scripts/（见 ../../scripts/）
-- 蒸馏 service 需 secret store EnvironmentFile（见 ../../docs/deployment.md §3.1）
+- 脚本从仓库 `scripts/` 目录运行（git pull 更新立即生效），unit 的 ExecStart 必须指向它
+- 蒸馏 service 需 secret store EnvironmentFile（见 ../../docs/deployment.md）

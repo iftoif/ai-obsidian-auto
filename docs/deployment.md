@@ -81,23 +81,26 @@ python3 -m venv ~/.hermes/obsidian-backup-env
 
 ## 3. systemd timers（服务器）
 
-参考 `templates/systemd/` 下的 unit 文件，安装到 `~/.config/systemd/user/`：
+> ⚠️ **推荐直接跑 `bash scripts/setup-server.sh`**：自动生成 unit（正确的仓库路径 + 环境变量注入）并启用。下面手工步骤仅供定制参考。
+
+手工方式（需自己替换路径）：
 
 ```bash
 mkdir -p ~/.config/systemd/user
 cp templates/systemd/*.service templates/systemd/*.timer ~/.config/systemd/user/
+# ↑ 复制后必须逐个编辑 ExecStart：把 %h/.hermes/scripts 替换为你的仓库 scripts 绝对路径
+#   （第十一轮起脚本直接从仓库运行，不再拷贝到 ~/.hermes/scripts）
 
 # 关键前置：开启 linger，让定时器在无登录会话时也运行（常见翻车点）
 loginctl enable-linger $USER
 
-# 启用（示例：拉取 + 蒸馏 + 索引 + Git + 自愈）
+# 启用
 systemctl --user enable --now mac-session-pull.timer vault-pull.timer node-discovery.timer
 systemctl --user enable --now obsidian-server-distill.timer obsidian-server-index.timer
 systemctl --user enable --now wiki-git-autocommit.timer hermes-self-heal.timer
 systemctl --user enable --now obsidian-server-chroma.timer
 
-# 可选：备份 timer（rclone 加密到远程存储）
-sudo systemctl enable --now obsidian-rclone-backup.timer
+# 可选：加密备份到网盘（rclone，需自行配置 remote 并自建 unit，仓库不含此 unit）
 ```
 
 ### 3.1 蒸馏服务需要 secret store
