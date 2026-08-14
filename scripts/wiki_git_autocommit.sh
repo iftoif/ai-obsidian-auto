@@ -7,6 +7,14 @@ LOCK="$HERMES_HOME/data/wiki-git-autocommit.lock"
 mkdir -p "$REPO" "$(dirname "$LOCK")"
 exec 9>"$LOCK"
 flock -n 9 || exit 0
+
+# 仓库自动初始化：全新部署时 $REPO 可能只是空目录（或不存在）
+if [ ! -d "$REPO/.git" ]; then
+  echo "初始化 Wiki Git 仓库: $REPO" >&2
+  git init -q "$REPO"
+  git -C "$REPO" config user.name  "obsidian-auto" 2>/dev/null || true
+  git -C "$REPO" config user.email "obsidian-auto@localhost" 2>/dev/null || true
+fi
 rsync -a --delete --exclude='.git/' "$VAULT/Wiki/" "$REPO/Wiki/"
 for d in Hermes/Lessons Codex/Lessons Claude/Lessons Pi/Lessons Shared/Lessons Context Skills; do
   if [ -d "$VAULT/$d" ]; then
@@ -23,4 +31,11 @@ if git -C "$REPO" diff --cached --binary | grep -Eiq 'sk-[A-Za-z0-9]|tvly-|cooki
   exit 78
 fi
 git -C "$REPO" commit -m "chore(wiki): sync knowledge layers $(date +%Y-%m-%d)" >/dev/null
-git -C "$REPO" push origin main
+# push：无 remote（全新部署纯本地）只 commit 不 push；
+#      遇远端有新提交（非 fast-forward）先 pull --rebase 再推；仍失败告警但不阻塞
+if git -C "$REPO" remote | grep -q . 2>/dev/null; then
+  if ! git -C "$REPO" push origin main 2>/dev/null; then
+    git -C "$REPO" pull --rebase origin main 2>/dev/null || true
+    git -C "$REPO" push origin main 2>/dev/null || echo "⚠️ Wiki Git push 失败（远端可能有冲突）" >&2
+  fi
+fi

@@ -37,6 +37,12 @@ mkdir -p "${OBSIDIAN_VAULT_PATH}/Wiki/Sources" \
          "${OBSIDIAN_VAULT_PATH}/Shared/Lessons"
 echo "✅ Vault 目录结构已创建"
 
+# 1.5 复制脚本到 HERMES_HOME/scripts/（脚本内部互调依赖此路径；幂等覆盖）
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+mkdir -p "$HERMES_HOME/scripts"
+cp -f "$REPO_DIR"/scripts/*.sh "$REPO_DIR"/scripts/*.py "$HERMES_HOME/scripts/" 2>/dev/null || true
+echo "✅ 脚本已复制到 $HERMES_HOME/scripts/"
+
 # 2. 创建 systemd 定时器（拉取 + 发现 + 蒸馏 + 索引 + Git + 自愈）
 mkdir -p "$HOME/.config/systemd/user"
 SYSTEMD="$HOME/.config/systemd/user"
@@ -85,6 +91,8 @@ write_unit "hermes-self-heal" "hermes-self-heal.sh" "1h"
   echo "$ENV_BLOCK"
   echo "Environment=\"AI_DISTILL_PROVIDER=${AI_DISTILL_PROVIDER:-your-provider}\""
   echo "Environment=\"AI_DISTILL_MODEL=${AI_DISTILL_MODEL:-your-model}\""
+  echo "Environment=\"FALLBACK_PROVIDERS_CSV=${FALLBACK_PROVIDERS_CSV:-}\""
+  echo "Environment=\"FALLBACK_MODELS_CSV=${FALLBACK_MODELS_CSV:-}\""
   echo "ExecStart=$REPO_DIR/scripts/server-wiki-distill.sh"
 } > "$SYSTEMD/obsidian-server-distill.service"
 cat > "$SYSTEMD/obsidian-server-distill.timer" <<TEOF

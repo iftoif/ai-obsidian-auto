@@ -57,7 +57,14 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 # ── 笔记模型 ──────────────────────────────────────────
 
 def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
-    """提取 YAML frontmatter 和正文"""
+    """提取 YAML frontmatter 和正文。
+
+    支持两种写法：
+      tags: [a, b]           # 内联列表
+      tags:                  # block 列表（缩进 - 项）
+        - a
+        - b
+    """
     fm: dict[str, Any] = {}
     body = text
 
@@ -66,22 +73,45 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
         if len(parts) >= 3:
             raw_fm = parts[1].strip()
             body = parts[2].strip()
+            current_key: str | None = None
             for line in raw_fm.splitlines():
-                if ":" in line:
-                    key, _, val = line.partition(":")
-                    key = key.strip()
-                    val = val.strip().strip('"').strip("'")
-                    # 处理 tags 列表
-                    if val.startswith("[") and val.endswith("]"):
-                        try:
-                            val = json.loads(val)
-                        except json.JSONDecodeError:
-                            val = [v.strip().strip('"').strip("'") for v in val[1:-1].split(",")]
-                    elif val.startswith("- "):
-                        val = [v.strip("- ").strip() for v in raw_fm.splitlines() if v.strip().startswith("- ")]
-                    elif val.lower() in ("true", "false"):
-                        val = val.lower() == "true"
-                    fm[key] = val
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if not line.startswith((" ", "\t")):
+                    # 顶层 key: value
+                    if ":" in line:
+                        key, _, val = line.partition(":")
+                        key = key.strip()
+                        val = val.strip().strip('"').strip("'")
+                        current_key = key
+                        if val:
+                            # 内联值
+                            if val.startswith("[") and val.endswith("]"):
+                                try:
+                                    fm[key] = json.loads(val)
+                                except json.JSONDecodeError:
+                                    fm[key] = [v.strip().strip('"').strip("'") for v in val[1:-1].split(",") if v.strip()]
+                            elif val.lower() in ("true", "false"):
+                                fm[key] = val.lower() == "true"
+                            else:
+                                fm[key] = val
+                        else:
+                            # 值为空 → block 列表，值在后续缩进行
+                            fm[key] = []
+                else:
+                    # 缩进行：归属 current_key 的列表项（YAML block 风格）
+                    if current_key is not None:
+                        item = stripped
+                        if item.startswith("- "):
+                            item = item[2:]
+                        item = item.strip().strip('"').strip("'")
+                        if item:
+                            cur = fm.get(current_key)
+                            if isinstance(cur, list):
+                                cur.append(item)
+                            else:
+                                fm[current_key] = [item]
     return fm, body
 
 

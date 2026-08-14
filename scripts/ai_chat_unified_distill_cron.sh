@@ -2,6 +2,12 @@
 # Incremental AI Raw Chat Logs -> Obsidian Lessons + Wiki
 set -Eeuo pipefail
 export PATH="$HOME/.local/bin:$HOME/.hermes/bin:$PATH"
+# 配置加载：systemd 直调时环境变量可能未注入，这里兜底 source 仓库 .env
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ -f "$REPO_DIR/.env" ]; then
+  set -a; . "$REPO_DIR/.env"; set +a
+fi
 VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 PROVIDER="${AI_DISTILL_PROVIDER:-your-provider}"
 MODEL="${AI_DISTILL_MODEL:-your-model}"

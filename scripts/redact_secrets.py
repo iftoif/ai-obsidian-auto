@@ -130,8 +130,22 @@ def find_secrets(text: str) -> list[Finding]:
     return findings
 
 
+_keychain_warned = False
+
+
 def keychain_available() -> bool:
-    return platform.system() == "Darwin" and KEYCHAIN.exists()
+    global _keychain_warned
+    ok = platform.system() == "Darwin" and KEYCHAIN.exists()
+    if not ok and not _keychain_warned:
+        # keychain_secret.swift 位于私有 Hermes 仓库，公开版未附带。
+        # 缺失时降级为 UNSTORED-（fail-closed，不落明文），但密钥不会被保存到 Keychain。
+        print(
+            "⚠️ keychain_secret.swift 缺失（该文件在私有 Hermes 仓库中，公开版未附带）。"
+            "密钥将以 UNSTORED- 引用处理（不落明文，但不可还原）。",
+            file=sys.stderr,
+        )
+        _keychain_warned = True
+    return ok
 
 
 def put_secret(secret: str, typ: str, source: str = "", hint: str = "") -> str:
@@ -196,7 +210,7 @@ def scan_paths(paths: list[Path]) -> int:
             print(f"{p}:{line}: {f.type} len={len(f.secret)}")
             total += 1
     print(f"TOTAL findings={total}")
-    return 0 if total >= 0 else 1
+    return 0  # scan 是只读检查，有无发现都正常退出
 
 
 def redact_paths(paths: list[Path], apply: bool) -> int:

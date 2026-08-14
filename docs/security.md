@@ -107,3 +107,4 @@ python3 ~/.hermes/scripts/secret_vault_export.py import --file hermes-secret-vau
 1. macOS Keychain 是单机绑定——换机必须用 secret_vault_export.py 迁移
 2. 蒸馏 prompt 与 LLM 本身可能把 [SECRET] 引用以外的旁路信息写进页面——需要定期审计
 3. 微信/Telegram 网关凭证在服务器 secret store，泄露面 = 服务器被攻破
+4. **`keychain_secret.swift` 不在公开仓库**（属私有 Hermes 仓库）。缺失时 redact_secrets.py 降级为 `UNSTORED-` fail-closed：密钥不落明文，但也**不会被保存**（引用不可还原）。需要完整密钥保存功能的用户，请从私有 Hermes 仓库拷贝该文件到 `scripts/` 目录

@@ -9,7 +9,8 @@ set -uo pipefail
 
 PRIMARY_MAC_IP="${PRIMARY_MAC_IP:-}"
 SSH_USER="${SSH_USER:-}"
-SERVER_HOSTNAME="${SERVER_HOSTNAME:-}"
+# 服务器主机名：优先环境变量，回退系统 hostname（避免空串导致 case 模式 ** 匹配一切）
+SERVER_HOSTNAME="${SERVER_HOSTNAME:-$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo '')}"
 
 VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 NODES_DIR="$VAULT/.hermes-nodes"
@@ -57,9 +58,12 @@ if [ -d "$NODES_DIR" ]; then
     [ -f "$f" ] || continue
     fname=$(basename "$f")
     # 跳过主 Mac 与服务器自身的标记（主 Mac 已单独处理；服务器自身标记用 SERVER_HOSTNAME 匹配）
-    case "$fname" in
-      *${SERVER_HOSTNAME}*) continue ;;
-    esac
+    # 注意：SERVER_HOSTNAME 为空时 case 模式会变成 ** 匹配一切，必须先判非空
+    if [ -n "$SERVER_HOSTNAME" ]; then
+      case "$fname" in
+        *${SERVER_HOSTNAME}*) continue ;;
+      esac
+    fi
     NODE_IP=$(python3 -c 'import json; print(json.load(open("'"$f"'")).get("lan_ip",""))' 2>/dev/null)
     NODE_USER=$(python3 -c 'import json; print(json.load(open("'"$f"'")).get("user",""))' 2>/dev/null)
     [ -z "$NODE_USER" ] && NODE_USER="$SSH_USER"

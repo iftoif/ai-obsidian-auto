@@ -87,6 +87,9 @@ python3 -m venv ~/.hermes/obsidian-backup-env
 mkdir -p ~/.config/systemd/user
 cp templates/systemd/*.service templates/systemd/*.timer ~/.config/systemd/user/
 
+# 关键前置：开启 linger，让定时器在无登录会话时也运行（常见翻车点）
+loginctl enable-linger $USER
+
 # 启用（示例：拉取 + 蒸馏 + 索引 + Git + 自愈）
 systemctl --user enable --now mac-session-pull.timer vault-pull.timer node-discovery.timer
 systemctl --user enable --now obsidian-server-distill.timer obsidian-server-index.timer

@@ -51,6 +51,8 @@ assert isinstance(d.get("hostname", ""), str) and 1 <= len(d["hostname"]) <= 64,
 assert d.get("role") in ("workstation", "server", "ro"), "bad role"
 ip = d.get("lan_ip", "")
 assert re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip), "bad lan_ip"
+assert all(0 <= int(x) <= 255 for x in ip.split(".")), "lan_ip octet out of range"
+assert re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", d.get("hostname", "")), "bad hostname charset"
 if "ssh_pubkey" in d:
     assert isinstance(d["ssh_pubkey"], str) and 1 <= len(d["ssh_pubkey"]) <= 512, "bad pubkey"
 if "user" in d:

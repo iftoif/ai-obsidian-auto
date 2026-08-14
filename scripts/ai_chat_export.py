@@ -152,6 +152,26 @@ def _iter_images_from_content(content: Any) -> list[tuple[str, str]]:
     return images
 
 
+def _extract_image_refs(source, line_no, vault, tool, ts, session) -> list[str]:
+    """从明文 jsonl 源文件重读指定行，提取图片并落盘（DSH 等二进制源不适用）。"""
+    refs: list[str] = []
+    try:
+        with source.open(encoding="utf-8", errors="replace") as _fh:
+            for _i, _line in enumerate(_fh, 1):
+                if _i == line_no:
+                    _obj = json.loads(_line)
+                    _msg = _obj.get("message") if isinstance(_obj.get("message"), dict) else {}
+                    _imgs = _iter_images_from_content(_msg.get("content"))
+                    for _seq, (_mime, _data) in enumerate(_imgs, start=1):
+                        _link = save_image_to_assets(vault, tool, ts.date(), session, _data, _mime, _seq)
+                        if _link:
+                            refs.append(_link)
+                    break
+    except Exception:
+        pass
+    return refs
+
+
 def save_image_to_assets(
     vault: Path,
     tool: str,
@@ -470,22 +490,12 @@ def export_tool(tool: str, vault: Path, state_dir: Path) -> tuple[int, int, int]
         h = event_hash(tool, session, role, text)
         if h in seen_set:
             continue
-        # 提取图片：重新读原始行，落盘到 assets 并追加引用
+        # 提取图片：重新读原始行，落盘到 assets 并追加引用。
+        # DSH 源文件是 zstd 压缩二进制，open(utf-8) 读出来是垃圾，跳过图片重读
+        # （DSH 的图片引用由导出层另行处理，不影响文本内容导出）。
         image_refs: list[str] = []
-        try:
-            with source.open(encoding="utf-8", errors="replace") as _fh:
-                for _i, _line in enumerate(_fh, 1):
-                    if _i == line_no:
-                        _obj = json.loads(_line)
-                        _msg = _obj.get("message") if isinstance(_obj.get("message"), dict) else {}
-                        _imgs = _iter_images_from_content(_msg.get("content"))
-                        for _seq, (_mime, _data) in enumerate(_imgs, start=1):
-                            _link = save_image_to_assets(vault, tool, ts.date(), session, _data, _mime, _seq)
-                            if _link:
-                                image_refs.append(_link)
-                        break
-        except Exception:
-            pass
+        if tool != "DSH":
+            image_refs = _extract_image_refs(source, line_no, vault, tool, ts, session)
         if image_refs:
             text = text.strip() + "\n\n" + "\n".join(image_refs) if text.strip() else "\n".join(image_refs)
 
@@ -518,7 +528,8 @@ def main() -> int:
             print(f"✅ {tool} 导出完成: files_seen={files_seen}, files_changed={files_changed}, messages_exported={exported}")
         else:
             print(f"{tool}: 无新消息")
-    return 0 if any_new else 0
+    # 增量导出语义：无新消息也是正常完成（exit 0）
+    return 0
 
 
 if __name__ == "__main__":
