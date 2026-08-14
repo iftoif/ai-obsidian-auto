@@ -53,7 +53,8 @@
 | `obsidian-server-distill.timer` | 每 4h | LLM 蒸馏：Raw → Wiki/Lessons |
 | `wiki-git-autocommit.timer` | 每小时 | 知识层 Git 提交推送 |
 | `obsidian-server-chroma.timer` | 每周日 | ChromaDB 高信号层重建 |
-| `obsidian-rclone-backup.timer` | 每日 | 加密备份（vault/database/runtime） |
+
+> 加密备份（vault/database/runtime）可用 rclone 自行配置，仓库不提供该 unit（见 deployment.md）。
 
 ### 服务器 crontab（导出）
 

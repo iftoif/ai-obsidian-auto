@@ -78,6 +78,18 @@ if [ -d "$NODES_DIR" ]; then
     [ -z "$NODE_USER" ] && NODE_USER="$SSH_USER"
     NODE_HOST=$(python3 -c 'import json; print(json.load(open("'"$f"'")).get("hostname","?"))' 2>/dev/null)
     [ -z "$NODE_IP" ] && continue
+    # IP 格式/范围校验（与 node-discovery 一致）：防恶意 json 让服务器
+    # 尝试 SSH 到任意地址（IP 投毒）
+    if ! python3 - "$NODE_IP" <<'PYEOF' 2>/dev/null
+import re, sys
+ip = sys.argv[1]
+assert re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip)
+assert all(0 <= int(x) <= 255 for x in ip.split("."))
+PYEOF
+    then
+      echo "  ⚠️ 跳过非法 IP 的注册标记: $fname ($NODE_IP)" >> "$LOG"
+      continue
+    fi
     # 跳过主 Mac 自身的注册标记（第 1 段已单独处理，避免重复拉取）
     [ -n "$PRIMARY_MAC_IP" ] && [ "$NODE_IP" = "$PRIMARY_MAC_IP" ] && continue
     pull_node "$NODE_USER" "$NODE_IP" "$NODE_HOST"

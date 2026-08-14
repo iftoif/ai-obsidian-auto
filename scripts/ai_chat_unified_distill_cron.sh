@@ -94,7 +94,20 @@ fi
 run_distill() {
   local prov="$1" model="$2"
   local out_file="/tmp/distill_output_$$.log"
-  hermes chat --provider "$prov" -m "$model" -s ai-chat-unified-distill \
+  # hermes CLI 解析：PATH 找不到时回退常见安装位置（真实环境可能不在 PATH）
+  local hbin="${HERMES_BIN:-}"
+  if [ -z "$hbin" ]; then
+    if command -v hermes >/dev/null 2>&1; then
+      hbin="$(command -v hermes)"
+    elif [ -x "${HERMES_HOME:-$HOME/.hermes}/hermes-agent/venv/bin/hermes" ]; then
+      hbin="${HERMES_HOME:-$HOME/.hermes}/hermes-agent/venv/bin/hermes"
+    fi
+  fi
+  if [ -z "$hbin" ]; then
+    echo "❌ 找不到 hermes CLI（PATH 中无 hermes，且未设置 HERMES_BIN）" >&2
+    return 1
+  fi
+  "$hbin" chat --provider "$prov" -m "$model" -s ai-chat-unified-distill \
     -t file,terminal --in "$VAULT" --max-turns "${AI_DISTILL_MAX_TURNS:-80}" \
     --accept-hooks -Q -q "$PROMPT" > "$out_file" 2>&1
   local rc=$?

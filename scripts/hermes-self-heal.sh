@@ -19,7 +19,7 @@ CODE_DIR="$HERMES_HOME/hermes-agent"
 VENV_PY="$CODE_DIR/venv/bin/python"
 LOG="$HERMES_HOME/logs/self-heal.log"
 SYSTEMD_DIR="$HOME/.config/systemd/user"
-GATEWAY_SERVICES="hermes-gateway hermes-gateway-wechat2 hermes-gateway-wechat3"
+GATEWAY_SERVICES="${GATEWAY_SERVICES:-hermes-gateway}"   # 可配置；多微信场景用环境变量覆盖
 
 mkdir -p "$(dirname "$LOG")"
 exec >>"$LOG" 2>&1

@@ -42,8 +42,9 @@ if ! ssh -o ConnectTimeout=8 -o BatchMode=yes "$MAC" "exit" 2>/dev/null; then
 fi
 
 # 拉取：主 Mac iCloud Vault → 服务器
-# 注意：远程路径含空格，需要完整引号
-rsync -avz --exclude=".obsidian/workspace.json" --exclude=".trash/" \
+# --protect-args：远程路径含空格（Mobile Documents）时整体作为单个参数
+# 传给远程 shell，否则空格会被拆词导致路径错误
+rsync -avz --protect-args --exclude=".obsidian/workspace.json" --exclude=".trash/" \
   "$MAC:$MAC_VAULT" \
   "$SERVER_VAULT/" 2>&1 | tail -5
 echo "✅ iCloud Vault 已拉取到服务器"
