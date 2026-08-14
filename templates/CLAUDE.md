@@ -55,7 +55,7 @@ NODES_DIR="<你的Vault路径>/.hermes-nodes"
 mkdir -p "$NODES_DIR"
 HOST=$(hostname -s 2>/dev/null || echo unknown)
 cat > "$NODES_DIR/${HOST}-$(date +%Y%m%d-%H%M%S).json" <<EOF
-{"hostname":"$(hostname)","role":"workstation","user":"$(whoami)","joined_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","os":"$(uname -s) $(uname -m)","lan_ip":"$(ipconfig getifaddr en0 2>/dev/null || echo '')"}
+{"hostname":"$(hostname)","role":"workstation","user":"$(whoami)","joined_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","os":"$(uname -s) $(uname -m)","lan_ip":"$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo '')"}
 EOF
 ```
 

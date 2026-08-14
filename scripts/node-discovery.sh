@@ -61,8 +61,11 @@ roles = set(sys.argv[2].split())
 assert isinstance(d.get("hostname", ""), str) and 1 <= len(d["hostname"]) <= 64, "bad hostname"
 assert d.get("role") in roles, "bad role"
 ip = d.get("lan_ip", "")
-assert re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip), "bad lan_ip"
-assert all(0 <= int(x) <= 255 for x in ip.split(".")), "lan_ip octet out of range"
+# lan_ip 允许为空（新机器可能还没拿到 IP，如 Wi-Fi 接口未启用）；
+# 非空时才校验格式（登记照常，后续拉取时再解析 IP）
+if ip:
+    assert re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip), "bad lan_ip"
+    assert all(0 <= int(x) <= 255 for x in ip.split(".")), "lan_ip octet out of range"
 assert re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", d.get("hostname", "")), "bad hostname charset"
 if "ssh_pubkey" in d:
     assert isinstance(d["ssh_pubkey"], str) and 1 <= len(d["ssh_pubkey"]) <= 512, "bad pubkey"

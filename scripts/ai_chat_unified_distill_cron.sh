@@ -9,8 +9,8 @@ if [ -f "$REPO_DIR/.env" ]; then
   set -a; . "$REPO_DIR/.env"; set +a
 fi
 VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
-PROVIDER="${AI_DISTILL_PROVIDER:-your-provider}"
-MODEL="${AI_DISTILL_MODEL:-your-model}"
+PROVIDER="${AI_DISTILL_PROVIDER:-openai-codex}"
+MODEL="${AI_DISTILL_MODEL:-gpt-5.6-luna}"
 # 加载 secret store（提供 fallback provider 的 API key，如 deepseek/kimi）
 SECRET_ENV="${HOME}/.config/hermes/secret-store/hermes.env"
 if [ -f "$SECRET_ENV" ]; then
@@ -25,7 +25,9 @@ STATE_FILE="$STATE_DIR/distill_state.json"
 LOCK_FILE="$STATE_DIR/distill.lock"
 mkdir -p "$STATE_DIR"
 exec 9>"$LOCK_FILE"
-flock -n 9 || { echo "已有蒸馏任务运行，跳过本轮"; exit 0; }
+if command -v flock >/dev/null 2>&1; then
+  flock -n 9 || { echo "已有蒸馏任务运行，跳过本轮"; exit 0; }
+fi
 
 MANIFEST=$(python3 - "$VAULT" "$STATE_FILE" <<'PY'
 import json, sys
