@@ -5,19 +5,46 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  qa:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Python 语法检查
-        run: python3 -m py_compile scripts/*.py
-      - name: 安装测试依赖
-        run: pip install -q pytest chromadb 2>/dev/null || true
-      - name: 单元测试（semantic 测试缺 sentence-transformers 自动 skip）
-        run: python3 -m pytest tests/unit/ -q --ignore=tests/unit/test_semantic.py || python3 -m pytest tests/unit/ -q
+      - name: 安装系统依赖（shellcheck + bats）
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q shellcheck bats
+      - name: 安装 Python 依赖
+        run: pip install -q pytest pytest-cov chromadb zstandard
+      - name: L0 静态分析（shellcheck 零 error/warning）
+        run: |
+          set -e
+          ERRORS=$(shellcheck -x scripts/*.sh tests/*.sh 2>&1 | grep -cE ':[0-9]+:[0-9]+: (error|warning)' || true)
+          echo "shellcheck error/warning: $ERRORS"
+          [ "$ERRORS" -eq 0 ]
+          python3 -m py_compile scripts/*.py
+      - name: L1 单元测试（pytest）
+        run: python3 -m pytest tests/unit/ -q --tb=short
+      - name: L1 bash 单元测试（bats）
+        run: bats tests/unit/*.bats
+      - name: L2 集成测试
+        run: |
+          bash tests/integration/test_env_propagation.sh
+          bash tests/integration/test_export_pipeline.sh
+      - name: L3 E2E 冒烟测试
+        run: bash tests/smoke.sh
+      - name: L4 安全矩阵
+        run: bash tests/security/test_security_matrix.sh
+      - name: L5 变异验证（kill rate 100%）
+        run: python3 tests/mutation.py
+      - name: 一致性检查（幽灵引用/占位符/敏感信息）
+        run: |
+          set -e
+          grep -rn 'your-provider|your-model|<your-key>' scripts/ .env.example 2>/dev/null && { echo '占位符残留'; exit 1; } || true
+          grep -rn 'aaronhk|/home/aaron|192.168.[0-9]' scripts/ docs/ templates/ .env.example 2>/dev/null && { echo '敏感信息'; exit 1; } || true
+          echo "一致性检查通过"
 
   auto-version:
-    needs: test
+    needs: qa
     runs-on: ubuntu-latest
     permissions:
       contents: write

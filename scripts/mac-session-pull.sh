@@ -33,7 +33,7 @@ echo "=== mac-session-pull $(date +%F_%T) ==="
 pull_node() {
   local user="$1" ip="$2" host="$3"
   echo "--- 处理节点: $host ($ip, user=$user) ---"
-  if ! ssh -o ConnectTimeout=8 -o BatchMode=yes "$user@$ip" "exit" 2>/dev/null; then
+  if ! ssh -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -o BatchMode=yes "$user@$ip" "exit" 2>/dev/null; then
     echo "  ⚠️ $host 不可达，跳过"
     return
   fi

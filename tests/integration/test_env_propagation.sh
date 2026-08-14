@@ -48,14 +48,14 @@ else
 fi
 
 # 3. 模拟 systemd 注入环境变量运行 vault-pull（SSH 不可达应优雅退出）
-if HOME="$TESTROOT/home" OBSIDIAN_VAULT_PATH="$TESTROOT/vault" PRIMARY_MAC_IP='10.0.0.99' SSH_USER='testermac' MAC_USER='testermac' bash "$REPO/scripts/vault-pull.sh" >/dev/null 2>&1; then
+if perl -e 'alarm 30; exec @ARGV' env HOME="$TESTROOT/home" OBSIDIAN_VAULT_PATH="$TESTROOT/vault" PRIMARY_MAC_IP='10.0.0.99' SSH_USER='testermac' MAC_USER='testermac' bash "$REPO/scripts/vault-pull.sh" >/dev/null 2>&1; then
   ok "vault-pull 在注入环境下 exit 0"
 else
   bad "vault-pull 在注入环境下失败"
 fi
 
 # 4. 无环境变量（手工路径）→ .env 兜底生效
-if HOME="$TESTROOT/home" bash "$REPO/scripts/vault-pull.sh" >/dev/null 2>&1; then
+if perl -e 'alarm 30; exec @ARGV' env HOME="$TESTROOT/home" bash "$REPO/scripts/vault-pull.sh" >/dev/null 2>&1; then
   ok "vault-pull 无环境变量时 .env 兜底 exit 0"
 else
   bad "vault-pull 无环境变量时失败"

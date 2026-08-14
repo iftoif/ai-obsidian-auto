@@ -36,7 +36,7 @@ exec >>"$LOG" 2>&1
 echo "=== vault-pull $(date +%F_%T) ==="
 
 # 检测主 Mac 是否可达
-if ! ssh -o ConnectTimeout=8 -o BatchMode=yes "$MAC" "exit" 2>/dev/null; then
+if ! ssh -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -o BatchMode=yes "$MAC" "exit" 2>/dev/null; then
   echo "⚠️ 主 Mac 不可达，跳过"
   exit 0
 fi
