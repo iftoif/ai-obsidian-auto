@@ -236,7 +236,7 @@ def is_low_value(text: str) -> bool:
         return True
     if s.startswith("<local-command-stdout>") or s.startswith("<command-name>"):
         return True
-    if s in {"hi", "hello", "你好", "say hi"}:
+    if s in {"hi", "hello", "say hi"}:
         # Still export short greetings? For Raw logs, skip obvious smoke tests.
         return True
     return False
@@ -465,39 +465,43 @@ def dsh_records(home: Path) -> Iterable[tuple[Path, int, dt.datetime, str, str, 
         try:
             fh = path.open("rb")
             reader = zstandard.ZstdDecompressor().stream_reader(fh)
-            text = io.TextIOWrapper(reader, encoding="utf-8", errors="replace")
+            text_io = io.TextIOWrapper(reader, encoding="utf-8", errors="replace")
         except Exception:
             continue
         try:
-            for line_no, line in enumerate(text, 1):
-                try:
-                    obj = json.loads(line)
-                except Exception:
-                    continue
-                typ = obj.get("type")
-                if typ == "session":
-                    session = str(obj.get("id") or session)
-                    cwd = str(obj.get("cwd") or cwd)
-                    continue
-                if typ not in {"user/message", "assistant/message"}:
-                    continue
-                d = obj.get("data") if isinstance(obj.get("data"), dict) else {}
-                msg = d.get("message") if isinstance(d.get("message"), dict) else {}
-                role = msg.get("role") or d.get("role")
-                if role not in {"user", "assistant"}:
-                    continue
-                # 过滤插件/系统注入的 user 消息（runtime context、system-reminder、policy 快照等）
-                src = d.get("source") if isinstance(d.get("source"), dict) else {}
-                if role == "user" and src.get("kind") not in (None, "user"):
-                    continue
-                content = msg.get("content") if msg else d.get("content")
-                text = dsh_text_from_content(content)
-                if is_low_value(text):
-                    continue
-                ts = parse_time(obj.get("time") or d.get("time"))
-                yield path, line_no, ts, role, text, session, cwd
+            try:
+                for line_no, line in enumerate(text_io, 1):
+                    try:
+                        obj = json.loads(line)
+                    except Exception:
+                        continue
+                    typ = obj.get("type")
+                    if typ == "session":
+                        session = str(obj.get("id") or session)
+                        cwd = str(obj.get("cwd") or cwd)
+                        continue
+                    if typ not in {"user/message", "assistant/message"}:
+                        continue
+                    d = obj.get("data") if isinstance(obj.get("data"), dict) else {}
+                    msg = d.get("message") if isinstance(d.get("message"), dict) else {}
+                    role = msg.get("role") or d.get("role")
+                    if role not in {"user", "assistant"}:
+                        continue
+                    # 过滤插件/系统注入的 user 消息（runtime context、system-reminder、policy 快照等）
+                    src = d.get("source") if isinstance(d.get("source"), dict) else {}
+                    if role == "user" and src.get("kind") not in (None, "user"):
+                        continue
+                    content = msg.get("content") if msg else d.get("content")
+                    text = dsh_text_from_content(content)
+                    if is_low_value(text):
+                        continue
+                    ts = parse_time(obj.get("time") or d.get("time"))
+                    yield path, line_no, ts, role, text, session, cwd
+            except Exception:
+                # 损坏/截断的 zstd 文件：跳过该文件，不中断整批导出
+                continue
         finally:
-            text.close()
+            text_io.close()
             fh.close()
 
 
