@@ -117,4 +117,4 @@ hermes chat --provider <你的provider> -m <你的model> -q "测试" 2>&1 | tail
 
 ## 新增一个 AI 客户端？
 
-见 [docs/client-onboarding.md](docs/client-onboarding.md) —— 按清单接入约需改 3 处。
+见 [docs/client-onboarding.md](client-onboarding.md) —— 按清单接入约需改 3 处。

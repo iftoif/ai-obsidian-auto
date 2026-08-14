@@ -1,15 +1,14 @@
 #!/bin/bash
-# Weekly high-signal ChromaDB rebuild for Obsidian LLM Wiki.
+# Weekly high-signal ChromaDB rebuild for the Obsidian LLM Wiki.
+# 复用 obsidian_backup.py 的 --full 模式（SQLite 全量 + Chroma 语义索引重建）
 set -euo pipefail
 
 export OBSIDIAN_VAULT_PATH="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
-if [ "$(uname -s)" != "Darwin" ]; then
-  export OBSIDIAN_VAULT_PATH="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
-fi
-PYBIN="$HOME/.hermes/obsidian-backup-env/bin/python3"
-SCRIPT="$HOME/.hermes/scripts/wiki_chroma_rebuild.py"
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+PYBIN="$HERMES_HOME/obsidian-backup-env/bin/python3"
+SCRIPT="$HERMES_HOME/scripts/obsidian_backup.py"
 
-OUTPUT=$("$PYBIN" "$SCRIPT" --vault "$OBSIDIAN_VAULT_PATH" --quiet 2>&1)
+OUTPUT=$(OBSIDIAN_CHROMA_ENABLED=1 "$PYBIN" "$SCRIPT" --full --quiet 2>&1)
 RC=$?
 
 if [ $RC -ne 0 ]; then
