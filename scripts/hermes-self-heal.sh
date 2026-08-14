@@ -82,6 +82,7 @@ for svc in $GATEWAY_SERVICES; do
   f="$SYSTEMD_DIR/$svc.service"
   [ -f "$f" ] || continue
   if grep -q "$OLD_PATTERN" "$f"; then
+    cp "$f" "$f.bak-$(date +%Y%m%d-%H%M%S)"   # 修改前自动备份（安全红线）
     sed -i "s|$OLD_PATTERN|$NEW_PY|g" "$f"
     echo "✅ $svc: ExecStart 已更新到 $NEW_PY"
     changed=1

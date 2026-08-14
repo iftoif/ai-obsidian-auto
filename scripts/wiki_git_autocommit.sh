@@ -17,7 +17,7 @@ done
 [ -f "$VAULT/CLAUDE.md" ] && cp "$VAULT/CLAUDE.md" "$REPO/CLAUDE.md"
 git -C "$REPO" add Wiki Hermes/Lessons Codex/Lessons Claude/Lessons Pi/Lessons Shared/Lessons Context Skills CLAUDE.md 2>/dev/null || true
 if git -C "$REPO" diff --cached --quiet; then exit 0; fi
-if git -C "$REPO" diff --cached --binary | grep -Eiq 'sk-[A-Za-z0-9]|tvly-|cookie[=:]|password[=:]|api[_-]?key[=:][^$]|bearer [A-Za-z0-9]'; then
+if git -C "$REPO" diff --cached --binary | grep -Eiq 'sk-[A-Za-z0-9]|tvly-|cookie[=:]|password[=:]|api[_-]?key[=:][^$]|bearer [A-Za-z0-9]|ghp_[A-Za-z0-9]|github_pat_|xox[baprs]-|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY'; then
   echo 'secret-like content detected; refusing commit' >&2
   git -C "$REPO" reset >/dev/null
   exit 78

@@ -44,10 +44,6 @@ pull_node() {
     rsync -avz "$user@$ip:~/.dsh/sessions/" "$HOME/.dsh/sessions/" 2>&1 | tail -1
     echo "  ✅ DSH 会话已拉取"
   fi
-  rsync -avz "$user@$ip:~/.codex/sessions/" "$HOME/.codex/sessions/" 2>&1 | tail -2
-  echo "  ✅ Codex 会话已拉取"
-  rsync -avz "$user@$ip:~/.pi/agent/sessions/" "$HOME/.pi/agent/sessions/" 2>&1 | tail -2
-  echo "  ✅ Pi 会话已拉取"
 }
 
 # 1. 主 Mac（固定，当前架构核心工作机；连接信息由环境变量注入）

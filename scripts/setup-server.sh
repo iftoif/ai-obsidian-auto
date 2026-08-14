@@ -44,11 +44,11 @@ SYSTEMD="$HOME/.config/systemd/user"
 # 通用 service 环境变量块（注入 .env 里的变量，保证 systemd 直调时可用）
 ENV_BLOCK="[Service]
 Type=oneshot
-Environment=OBSIDIAN_VAULT_PATH=${OBSIDIAN_VAULT_PATH}
-Environment=SSH_USER=${SSH_USER}
-Environment=PRIMARY_MAC_IP=${PRIMARY_MAC_IP}
-Environment=MAC_USER=${MAC_USER}
-Environment=HERMES_HOME=${HERMES_HOME:-$HOME/.hermes}"
+Environment=\"OBSIDIAN_VAULT_PATH=${OBSIDIAN_VAULT_PATH}\"
+Environment=\"SSH_USER=${SSH_USER}\"
+Environment=\"PRIMARY_MAC_IP=${PRIMARY_MAC_IP}\"
+Environment=\"MAC_USER=${MAC_USER}\"
+Environment=\"HERMES_HOME=${HERMES_HOME:-$HOME/.hermes}\""
 
 # 写一个 service + timer 的辅助函数
 write_unit() {
@@ -83,8 +83,8 @@ write_unit "hermes-self-heal" "hermes-self-heal.sh" "1h"
   echo "[Unit]"
   echo "Description=obsidian-server-distill"
   echo "$ENV_BLOCK"
-  echo "Environment=AI_DISTILL_PROVIDER=${AI_DISTILL_PROVIDER:-your-provider}"
-  echo "Environment=AI_DISTILL_MODEL=${AI_DISTILL_MODEL:-your-model}"
+  echo "Environment=\"AI_DISTILL_PROVIDER=${AI_DISTILL_PROVIDER:-your-provider}\""
+  echo "Environment=\"AI_DISTILL_MODEL=${AI_DISTILL_MODEL:-your-model}\""
   echo "ExecStart=$REPO_DIR/scripts/server-wiki-distill.sh"
 } > "$SYSTEMD/obsidian-server-distill.service"
 cat > "$SYSTEMD/obsidian-server-distill.timer" <<TEOF

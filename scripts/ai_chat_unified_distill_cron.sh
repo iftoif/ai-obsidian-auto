@@ -38,6 +38,8 @@ for root in ("Hermes/Chat Logs","Codex/Chat Logs","Claude/Chat Logs","Pi/Chat Lo
             continue
         st=p.stat(); key=str(p.relative_to(vault)); sig=f"{st.st_mtime_ns}:{st.st_size}"
         if old.get(key) != sig: rows.append(key)
+if len(rows) > 500:
+    print(f"⚠️ 本轮变更文件 {len(rows)} 个，超过上限 500，截断处理（剩余 {len(rows)-500} 个将在后续轮次补齐）", file=sys.stderr)
 print("\n".join(rows[:500]))
 PY
 )
@@ -129,19 +131,24 @@ if [ "$RC" -ne 0 ]; then
 fi
 set -e
 if [ "$RC" -eq 0 ]; then
-  python3 - "$VAULT" "$STATE_FILE" <<'PY'
+  # 增量更新 state：只标记「本轮实际蒸馏的 MANIFEST 文件」。
+  # 被 500 上限截断的文件保持旧状态 → 下一轮自动重新出现（天然 retry，不丢文件）。
+  python3 - "$VAULT" "$STATE_FILE" "$MANIFEST" <<'PY'
 import json, sys
 from datetime import datetime
 from pathlib import Path
-vault=Path(sys.argv[1]); out=Path(sys.argv[2]); data={"files":{}}
-for root in ("Hermes/Chat Logs","Codex/Chat Logs","Claude/Chat Logs","Pi/Chat Logs","DSH/Chat Logs"):
-    d=vault/root
-    if not d.exists(): continue
-    for p in d.rglob("*.md"):
-        rel = str(p.relative_to(d))
-        if rel.startswith("assets/"):
-            continue
-        st=p.stat(); data["files"][str(p.relative_to(vault))]=f"{st.st_mtime_ns}:{st.st_size}"
+vault=Path(sys.argv[1]); out=Path(sys.argv[2])
+manifest=[ln for ln in sys.argv[3].splitlines() if ln.strip()]
+data={"files":{}}
+if out.exists():
+    try: data=json.loads(out.read_text())
+    except Exception: data={"files":{}}
+files=data.setdefault("files", {})
+for rel in manifest:
+    p=vault/rel
+    if not p.exists(): continue
+    st=p.stat()
+    files[rel]=f"{st.st_mtime_ns}:{st.st_size}"
 data["last_success_at"]=datetime.now().astimezone().isoformat()
 out.write_text(json.dumps(data,ensure_ascii=False,indent=2)+"\n")
 PY

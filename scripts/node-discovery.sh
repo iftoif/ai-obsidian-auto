@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 # 节点自动发现：扫描 Vault/.hermes-nodes/ 注册标记，记录新机器 + 写文档 + 发通知 + 建立 SSH 信任
+#
+# ⚠️ 安全警示（有意设计，请读后再部署）：
+#   本脚本会自动把注册标记里的 ssh_pubkey 加入 authorized_keys，实现新机器「零人工」接入。
+#   设计前提：**所有能写入 Vault/.hermes-nodes/ 的设备/账号都是你信任的**（家庭内网 + 个人 iCloud）。
+#   风险：若你的 iCloud 账号被盗、或 Vault 所在目录被第三方 App 写入，攻击者投递一个含自己公钥的
+#         json 即可 SSH 登录本服务器。
+#   缓解：见 docs/security.md「自动信任的设计边界」（iCloud 双重认证 / 不共享 Vault 给第三方 App /
+#         定期检查 .hermes-nodes 目录）。
+#         不想要自动信任：注释掉下方「建立 SSH 信任」代码块，改为人工执行
+#            echo "<公钥>" >> ~/.ssh/authorized_keys
 set -uo pipefail
+
+# authorized_keys 写入加固：umask 077（新文件默认仅本人可读写）
+umask 077
 
 VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 NODES_DIR="$VAULT/.hermes-nodes"
@@ -24,6 +37,29 @@ if [ -d "$NODES_DIR" ]; then
   for f in "$NODES_DIR"/*.json; do
     [ -f "$f" ] || continue
     fname=$(basename "$f")
+    # 注册源完整性校验 1：文件名白名单（<hostname>-<YYYYMMDD-HHMMSS>.json）
+    # 拒绝不符合「本系统报到模板」命名约定的文件（防止无关文件被误当节点）
+    if ! echo "$fname" | grep -Eq '^[A-Za-z0-9_.-]+-[0-9]{8}-[0-9]{6}\.json$'; then
+      echo "⚠️ 跳过非标准命名的注册文件: $fname" >> "$LOG"
+      continue
+    fi
+    # 注册源完整性校验 2：JSON 严格解析 + 必填字段类型/长度/格式
+    if ! python3 - "$f" <<'PYEOF' 2>/dev/null
+import json, re, sys
+d = json.load(open(sys.argv[1]))
+assert isinstance(d.get("hostname", ""), str) and 1 <= len(d["hostname"]) <= 64, "bad hostname"
+assert d.get("role") in ("workstation", "server", "ro"), "bad role"
+ip = d.get("lan_ip", "")
+assert re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip), "bad lan_ip"
+if "ssh_pubkey" in d:
+    assert isinstance(d["ssh_pubkey"], str) and 1 <= len(d["ssh_pubkey"]) <= 512, "bad pubkey"
+if "user" in d:
+    assert isinstance(d["user"], str) and 1 <= len(d["user"]) <= 64, "bad user"
+PYEOF
+then
+      echo "⚠️ 跳过字段校验失败的注册文件: $fname" >> "$LOG"
+      continue
+    fi
     # 已登记的跳过
     if echo "$KNOWN" | grep -qF "$fname"; then
       continue
@@ -42,11 +78,22 @@ if [ -d "$NODES_DIR" ]; then
     NODE_PUBKEY=$(python3 -c 'import json; print(json.load(open("'"$f"'")).get("ssh_pubkey",""))' 2>/dev/null)
 
     # 建立 SSH 信任（公钥加 authorized_keys，服务器可主动配置新机器）
+    # 最小化格式校验：只接受合法 SSH 公钥形态，拒绝换行注入/多行内容
     if [ -n "$NODE_PUBKEY" ] && [ "$NODE_PUBKEY" != "" ]; then
-      if ! grep -qF "$NODE_PUBKEY" "$AUTH_KEYS" 2>/dev/null; then
-        echo "$NODE_PUBKEY" >> "$AUTH_KEYS"
-        chmod 600 "$AUTH_KEYS"
-        echo "🔑 已建立 SSH 信任：$NODE_HOST 公钥已加入 authorized_keys" >> "$LOG"
+      if echo "$NODE_PUBKEY" | grep -Eq '^ssh-(rsa|ed25519|ecdsa) [A-Za-z0-9+/]+={0,2}( [A-Za-z0-9_.-]+)?$'; then
+        # 并发一致性：flock 保护 authorized_keys 读写（防多实例同时写）
+        (
+          flock -x 200
+          if ! grep -qF "$NODE_PUBKEY" "$AUTH_KEYS" 2>/dev/null; then
+            echo "$NODE_PUBKEY" >> "$AUTH_KEYS"
+            echo "🔑 已建立 SSH 信任：$NODE_HOST 公钥已加入 authorized_keys" >> "$LOG"
+          fi
+          # 权限断言：无论是否新写，保证权限正确
+          chmod 600 "$AUTH_KEYS"
+          chmod 700 "$HOME/.ssh"
+        ) 200>"$AUTH_KEYS.lock"
+      else
+        echo "⚠️ 拒绝非法公钥（格式校验失败）：$NODE_HOST" >> "$LOG"
       fi
     fi
 

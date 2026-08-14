@@ -201,13 +201,32 @@ class Note:
 # ── 状态跟踪（增量） ──────────────────────────────
 
 def load_state() -> dict:
+    """读取 state.json；损坏/截断时备份现场并安全降级为空（触发全量重扫）。"""
     if STATE_FILE.exists():
-        return json.loads(STATE_FILE.read_text())
+        try:
+            return json.loads(STATE_FILE.read_text())
+        except Exception as e:
+            # 单点恢复：损坏文件改名保留，不影响下次备份
+            try:
+                corrupt = STATE_FILE.with_name(
+                    f"state.json.corrupt-{time.strftime('%Y%m%d-%H%M%S')}"
+                )
+                STATE_FILE.replace(corrupt)
+                print(
+                    f"⚠️ state.json 损坏（{e}），已改名备份为 {corrupt.name}，本轮全量重建",
+                    file=sys.stderr,
+                )
+            except Exception:
+                pass
+            return {}
     return {}
 
 
 def save_state(state: dict):
-    STATE_FILE.write_text(json.dumps(state, indent=2, ensure_ascii=False))
+    """原子写：先写临时文件再 rename，避免进程中断产生半截 state.json。"""
+    tmp = STATE_FILE.with_name("state.json.tmp")
+    tmp.write_text(json.dumps(state, indent=2, ensure_ascii=False))
+    tmp.replace(STATE_FILE)
 
 
 def scan_vault() -> list[Note]:

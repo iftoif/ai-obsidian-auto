@@ -12,6 +12,7 @@ import argparse
 import base64
 import datetime as dt
 import hashlib
+import io
 import json
 import os
 import re
@@ -407,38 +408,44 @@ def dsh_records(home: Path) -> Iterable[tuple[Path, int, dt.datetime, str, str, 
     for path in sorted(dsh_dir.rglob("session.jsonl.zstd")):
         session = path.parent.name  # session-<uuid>
         cwd = ""
+        # 流式逐行解压：避免大会话文件全量读入内存（OOM 防护）
         try:
-            with path.open("rb") as fh:
-                data = zstandard.ZstdDecompressor().stream_reader(fh).read()
+            fh = path.open("rb")
+            reader = zstandard.ZstdDecompressor().stream_reader(fh)
+            text = io.TextIOWrapper(reader, encoding="utf-8", errors="replace")
         except Exception:
             continue
-        for line_no, line in enumerate(data.decode("utf-8", errors="replace").splitlines(), 1):
-            try:
-                obj = json.loads(line)
-            except Exception:
-                continue
-            typ = obj.get("type")
-            if typ == "session":
-                session = str(obj.get("id") or session)
-                cwd = str(obj.get("cwd") or cwd)
-                continue
-            if typ not in {"user/message", "assistant/message"}:
-                continue
-            d = obj.get("data") if isinstance(obj.get("data"), dict) else {}
-            msg = d.get("message") if isinstance(d.get("message"), dict) else {}
-            role = msg.get("role") or d.get("role")
-            if role not in {"user", "assistant"}:
-                continue
-            # 过滤插件/系统注入的 user 消息（runtime context、system-reminder、policy 快照等）
-            src = d.get("source") if isinstance(d.get("source"), dict) else {}
-            if role == "user" and src.get("kind") not in (None, "user"):
-                continue
-            content = msg.get("content") if msg else d.get("content")
-            text = dsh_text_from_content(content)
-            if is_low_value(text):
-                continue
-            ts = parse_time(obj.get("time") or d.get("time"))
-            yield path, line_no, ts, role, text, session, cwd
+        try:
+            for line_no, line in enumerate(text, 1):
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                typ = obj.get("type")
+                if typ == "session":
+                    session = str(obj.get("id") or session)
+                    cwd = str(obj.get("cwd") or cwd)
+                    continue
+                if typ not in {"user/message", "assistant/message"}:
+                    continue
+                d = obj.get("data") if isinstance(obj.get("data"), dict) else {}
+                msg = d.get("message") if isinstance(d.get("message"), dict) else {}
+                role = msg.get("role") or d.get("role")
+                if role not in {"user", "assistant"}:
+                    continue
+                # 过滤插件/系统注入的 user 消息（runtime context、system-reminder、policy 快照等）
+                src = d.get("source") if isinstance(d.get("source"), dict) else {}
+                if role == "user" and src.get("kind") not in (None, "user"):
+                    continue
+                content = msg.get("content") if msg else d.get("content")
+                text = dsh_text_from_content(content)
+                if is_low_value(text):
+                    continue
+                ts = parse_time(obj.get("time") or d.get("time"))
+                yield path, line_no, ts, role, text, session, cwd
+        finally:
+            text.close()
+            fh.close()
 
 
 def export_tool(tool: str, vault: Path, state_dir: Path) -> tuple[int, int, int]:

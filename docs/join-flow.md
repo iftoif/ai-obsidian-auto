@@ -34,11 +34,13 @@ AI 自动：
 ## 第 5 步：服务器自动接管（零操作）
 
 ```txt
-node-discovery（每小时）→ 发现注册标记 → 通知你
+node-discovery（每小时）→ 发现注册标记 → 自动信任 SSH 公钥 → 通知你
 mac-session-pull（每小时）→ SSH 拉取会话
 蒸馏（每 4h）→ 会话 → Wiki/Lessons
 索引 + 备份 → 各自定时
 ```
+
+> ⚠️ 自动信任说明：node-discovery 会自动把注册标记里的 SSH 公钥加入服务器 authorized_keys（全自动设计，家庭内网场景）。风险路径与对症缓解见 [security.md](security.md)「自动信任的设计边界」。
 
 ## 验证成功
 
