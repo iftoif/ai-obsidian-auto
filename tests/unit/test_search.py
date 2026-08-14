@@ -53,7 +53,12 @@ def test_search_no_result():
 
 
 def test_search_english_word():
+    # 英文词：unicode61 分词对英文按空格切词，FTS 直接命中（修复复制粘贴的重复测试）
     tmp = tempfile.mkdtemp()
     _make_db(tmp)
-    res = ob.search_sqlite('排序')
+    conn = sqlite3.connect(str(ob.DB_PATH))
+    conn.execute("INSERT INTO notes (path, title, content, summary, tags, mtime) VALUES ('en.md', 'Quick Sort', 'quick sort algorithm complexity analysis', 's2', 'algo', '2026-01-02T00:00:00Z')")
+    conn.commit()
+    conn.close()
+    res = ob.search_sqlite('sort')
     assert len(res) >= 1

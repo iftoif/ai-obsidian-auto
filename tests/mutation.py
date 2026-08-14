@@ -39,7 +39,7 @@ MUTATIONS = [
      '# 标量值后的缩进续行属畸形 YAML，直接忽略', 'else:\n                                fm[current_key] = [item]  # bug: 标量被覆盖成 list',
      'scalar', 'test_fm_scalar_not_overwritten_by_indent'),
     ('search-like', 'scripts/obsidian_backup.py',
-     'WHERE content LIKE ? OR title LIKE ?', 'WHERE 1=0  # bug: LIKE fallback 被禁',
+     'WHERE content LIKE ? ESCAPE', 'WHERE 1=0  # bug: LIKE fallback 被禁',
      'search', 'test_search_like_fallback'),
     ('chroma-size-order', 'scripts/obsidian_backup.py',
      'if self.size > CHROMA_MAX_RAW_BYTES:', 'if False:',

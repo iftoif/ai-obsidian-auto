@@ -292,7 +292,7 @@ def event_hash(tool: str, session: str, role: str, text: str, line_no: int | Non
     return hashlib.sha256(key.encode("utf-8", errors="replace")).hexdigest()
 
 
-def append_entry(vault: Path, tool: str, roll: dict[str, dict[str, int]], ts: dt.datetime, role: str, text: str, source: Path, line_no: int, session: str, cwd: str) -> None:
+def append_entry(vault: Path, tool: str, roll: dict[str, dict[str, int]], ts: dt.datetime, role: str, text: str, source: Path, line_no: int, session: str, cwd: str) -> bool:
     day = ts.date()
     day_s = day.isoformat()
     st = roll.setdefault(day_s, {"part": 1, "size": 0})
@@ -305,6 +305,7 @@ def append_entry(vault: Path, tool: str, roll: dict[str, dict[str, int]], ts: dt
     if cwd:
         body += f"  \n> cwd: `{safe(cwd)}`"
     text = redact_for_raw_log(text, source=f"{tool} session={session} {source}:{line_no}")
+    redact_ok = not text.startswith("[REDACT-UNAVAILABLE]")
     body += "\n\n" + text.strip() + "\n\n"
     b = len(body.encode("utf-8"))
     # 滚动：当前文件已有内容且追加后超限，或单条消息本身就超限（避免单文件无限膨胀）
@@ -316,6 +317,7 @@ def append_entry(vault: Path, tool: str, roll: dict[str, dict[str, int]], ts: dt
     with p.open("a", encoding="utf-8") as h:
         h.write(body)
     st["size"] += b
+    return redact_ok
 
 
 def _resolve_client_dir(home: Path, env_var: str, default_rel: str, probe: str, name_hint: str = "") -> Path:
@@ -546,11 +548,13 @@ def export_tool(tool: str, vault: Path, state_dir: Path) -> tuple[int, int, int]
             text = text.strip() + "\n\n" + "\n".join(image_refs) if text.strip() else "\n".join(image_refs)
 
         before = dict(roll.get(ts.date().isoformat(), {}))
-        append_entry(vault, tool, roll, ts, role, text, source, line_no, session, cwd)
+        ok = append_entry(vault, tool, roll, ts, role, text, source, line_no, session, cwd)
         after = roll.get(ts.date().isoformat(), {})
         changed.add(note_path(vault, tool, ts.date(), int(after.get("part") or before.get("part") or 1)))
-        seen.append(h)
-        seen_set.add(h)
+        if ok:
+            # 脱敏成功才标记已导出；失败的消息下次重试（避免原文永久丢失）
+            seen.append(h)
+            seen_set.add(h)
         exported += 1
     if len(seen) > SEEN_LIMIT:
         seen = seen[-SEEN_LIMIT:]

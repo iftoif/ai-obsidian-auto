@@ -380,6 +380,20 @@ def delete_note_sqlite(conn, path: str):
     conn.commit()
 
 
+def _find_stale_db_paths(current_paths: list[str]) -> list[str]:
+    """找出 SQLite 中已存在但当前 vault 已不存在的路径（--full 清理残留用）。"""
+    conn = sqlite3.connect(str(DB_PATH))
+    try:
+        rows = conn.execute("SELECT path FROM notes").fetchall()
+        db_paths = {r[0] for r in rows}
+    except sqlite3.OperationalError:
+        return []
+    finally:
+        conn.close()
+    cur = set(current_paths)
+    return sorted(db_paths - cur)
+
+
 def search_sqlite(query: str, limit: int = 10) -> list[dict]:
     """FTS5 全文搜索；无结果时 fallback LIKE（unicode61 分词对中文子串不友好）。"""
     conn = sqlite3.connect(str(DB_PATH))
@@ -401,12 +415,14 @@ def search_sqlite(query: str, limit: int = 10) -> list[dict]:
         print(f"  [fts error] {e}", file=sys.stderr)
 
     # fallback：LIKE 子串匹配（中文等无空格语言的关键场景）
-    like = f"%{query}%"
+    # 转义 LIKE 通配符（% _）——用户搜索字面 % 时不应匹配全部
+    escaped = query.replace('%', chr(92) + '%').replace('_', chr(92) + '_')
+    like = f"%{escaped}%"
     rows = conn.execute(
         """SELECT path, title, summary, tags, mtime,
                   substr(content, 1, 200) AS excerpt
            FROM notes
-           WHERE content LIKE ? OR title LIKE ?
+           WHERE content LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\'
            ORDER BY mtime DESC
            LIMIT ?""",
         (like, like, limit),
@@ -533,8 +549,10 @@ def cmd_backup(full: bool = False, quiet: bool = False):
     # 2. 增量判断
     state = {} if full else load_state()
     if full:
+        # 全量重建：所有当前笔记都重建，且清理 DB/Chroma 中已不存在的残留
+        # （对比 SQLite 现有记录 vs 当前文件集合）
         changed = notes
-        deleted = []
+        deleted = _find_stale_db_paths([n.rel_path for n in notes])
         current_paths = [n.rel_path for n in notes]
     else:
         changed, deleted, current_paths = find_changed_notes(notes, state)
@@ -644,7 +662,7 @@ def cmd_stats():
     print(f"📋 状态跟踪: {state_count} 篇")
 
 
-def cmd_search(query: str, semantic: bool = False):
+def cmd_search(query: str, semantic: bool = False, limit: int = 10):
     """搜索笔记"""
     if not DB_PATH.exists():
         print("❌ 数据库不存在，请先运行备份")
@@ -653,7 +671,7 @@ def cmd_search(query: str, semantic: bool = False):
     if semantic:
         print(f"🔍 语义搜索: {query}")
         print("=" * 50)
-        results = search_chroma(query)
+        results = search_chroma(query, limit=limit)
         if not results:
             print("  无结果")
         for r in results:
@@ -665,7 +683,7 @@ def cmd_search(query: str, semantic: bool = False):
     else:
         print(f"🔍 FTS5 搜索: {query}")
         print("=" * 50)
-        results = search_sqlite(query)
+        results = search_sqlite(query, limit=limit)
         if not results:
             print("  无结果")
         for r in results:
@@ -704,7 +722,7 @@ def main():
     if args.stats:
         cmd_stats()
     elif args.search:
-        cmd_search(args.search, semantic=args.semantic)
+        cmd_search(args.search, semantic=args.semantic, limit=args.limit)
     else:
         cmd_backup(full=args.full, quiet=args.quiet)
 

@@ -16,9 +16,19 @@ else
 fi
 
 # 验证必填项（:- 形式：变量未定义时输出友好错误，不触发 set -u unbound）
-[ -n "${OBSIDIAN_VAULT_PATH:-}" ] || { echo "❌ 请填写 OBSIDIAN_VAULT_PATH"; exit 1; }
-[ -n "${PRIMARY_MAC_IP:-}" ] || { echo "❌ 请填写 PRIMARY_MAC_IP"; exit 1; }
-[ -n "${SSH_USER:-}" ] || { echo "❌ 请填写 SSH_USER"; exit 1; }
+# 同时拒绝占位符（<...> 尖括号模板值）——非空但无效的配置会静默错误部署
+check_required() {
+  local var_name="$1" value="$2"
+  if [ -z "$value" ]; then
+    echo "❌ 请填写 $var_name"; exit 1
+  fi
+  if echo "$value" | grep -q "<"; then
+    echo "❌ $var_name 仍是占位符（<...>），请在 .env 中填写真实值"; exit 1
+  fi
+}
+check_required OBSIDIAN_VAULT_PATH "${OBSIDIAN_VAULT_PATH:-}"
+check_required PRIMARY_MAC_IP "${PRIMARY_MAC_IP:-}"
+check_required SSH_USER "${SSH_USER:-}"
 
 echo "===== AI Obsidian Auto 服务器部署 ====="
 echo "Vault: ${OBSIDIAN_VAULT_PATH}"
