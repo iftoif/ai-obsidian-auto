@@ -639,17 +639,17 @@ def cmd_stats():
         conn.close()
         db_size = DB_PATH.stat().st_size
 
-    print(f"📊 Obsidian Vault 统计")
+    print("📊 Obsidian Vault 统计")
     print(f"{'='*50}")
     print(f"📁 Vault: {VAULT_PATH}")
     print(f"📄 笔记总量: {total_notes}")
     print(f"💾 原始大小: {total_size/1024:.1f} KB")
     print()
-    print(f"📂 按目录:")
+    print("📂 按目录:")
     for cat, count in sorted(category_count.items(), key=lambda x: -x[1]):
         print(f"  {cat}: {count} 篇")
     print()
-    print(f"🏷️  热门标签 (Top 10):")
+    print("🏷️  热门标签 (Top 10):")
     for tag, count in sorted(tag_count.items(), key=lambda x: -x[1])[:10]:
         print(f"  #{tag}: {count}")
     print()

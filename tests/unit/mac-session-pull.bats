@@ -5,7 +5,8 @@
 
 setup() {
   # 提取脚本并 stub 掉外部命令
-  export TESTROOT="$(mktemp -d)"
+  TESTROOT="$(mktemp -d)"
+  export TESTROOT
   export HOME="$TESTROOT/home"
   mkdir -p "$HOME/.hermes/logs" "$HOME/.claude/projects" "$HOME/.codex/sessions" "$HOME/.pi/agent/sessions" "$HOME/.dsh/sessions"
 }
