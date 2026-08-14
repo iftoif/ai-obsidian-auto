@@ -133,9 +133,9 @@ def get_tags(fm: dict) -> list[str]:
         val = fm.get(key)
         if isinstance(val, list):
             tags.extend(val)
-        elif isinstance(val, str):
-            tags.append(val)
-    return list(set(tags))
+        elif isinstance(val, str) and val.strip():
+            tags.append(val.strip())
+    return list(set(t for t in tags if t))
 
 
 def extract_wikilinks(body: str) -> list[str]:
