@@ -14,7 +14,7 @@ fi
 export OBSIDIAN_VAULT_PATH="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 PYBIN="$HERMES_HOME/obsidian-backup-env/bin/python3"
-SCRIPT="$HERMES_HOME/scripts/obsidian_backup.py"
+SCRIPT="$SCRIPT_DIR/obsidian_backup.py"   # 同目录互调，git pull 更新立即生效
 
 OUTPUT=$(OBSIDIAN_CHROMA_ENABLED=0 "$PYBIN" "$SCRIPT" --quiet 2>&1)
 EXIT=$?

@@ -109,8 +109,17 @@ Vault/
 │   ├── wiki_ingest.py           #   URL/文件/文本入库
 │   ├── redact_secrets.py        #   敏感信息识别与脱敏
 │   └── …（详见 scripts/README.md）
-├── templates/                   # Obsidian Wiki 页模板（概念/实体/主题/来源）
+├── templates/                   # Obsidian Wiki 页模板 + systemd 单元模板
+├── tests/smoke.sh               # 冒烟测试（沙箱端到端验证核心链路）
 └── LICENSE
+```
+
+## 开发与测试
+
+```bash
+# 冒烟测试：在临时沙箱里跑 setup-server / autocommit / node-discovery，
+# 不碰真实 systemd/crontab/vault，任何一次改动后建议跑一遍
+bash tests/smoke.sh
 ```
 
 ## 快速上手

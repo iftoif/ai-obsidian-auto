@@ -37,11 +37,8 @@ mkdir -p "${OBSIDIAN_VAULT_PATH}/Wiki/Sources" \
          "${OBSIDIAN_VAULT_PATH}/Shared/Lessons"
 echo "✅ Vault 目录结构已创建"
 
-# 1.5 复制脚本到 HERMES_HOME/scripts/（脚本内部互调依赖此路径；幂等覆盖）
-HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
-mkdir -p "$HERMES_HOME/scripts"
-cp -f "$REPO_DIR"/scripts/*.sh "$REPO_DIR"/scripts/*.py "$HERMES_HOME/scripts/" 2>/dev/null || true
-echo "✅ 脚本已复制到 $HERMES_HOME/scripts/"
+# 脚本直接从仓库路径运行（git pull 更新立即生效，无需拷贝步骤；
+# 仓库移动后重跑本脚本即可）。脚本内部互调用同目录引用（$SCRIPT_DIR）。
 
 # 2. 创建 systemd 定时器（拉取 + 发现 + 蒸馏 + 索引 + Git + 自愈）
 mkdir -p "$HOME/.config/systemd/user"
@@ -63,7 +60,7 @@ write_unit() {
     echo "[Unit]"
     echo "Description=$name"
     echo "$ENV_BLOCK"
-    echo "ExecStart=$HERMES_HOME/scripts/$script"   # 统一用 HERMES_HOME（脚本已复制过去，仓库移动不影响）
+    echo "ExecStart=$REPO_DIR/scripts/$script"   # 活代码路径：git pull 更新立即生效
   } > "$SYSTEMD/$name.service"
   cat > "$SYSTEMD/$name.timer" <<TEOF
 [Unit]
@@ -93,7 +90,7 @@ write_unit "hermes-self-heal" "hermes-self-heal.sh" "1h"
   echo "Environment=\"AI_DISTILL_MODEL=${AI_DISTILL_MODEL:-gpt-5.6-luna}\""
   echo "Environment=\"FALLBACK_PROVIDERS_CSV=${FALLBACK_PROVIDERS_CSV:-}\""
   echo "Environment=\"FALLBACK_MODELS_CSV=${FALLBACK_MODELS_CSV:-}\""
-  echo "ExecStart=$HERMES_HOME/scripts/server-wiki-distill.sh"
+  echo "ExecStart=$REPO_DIR/scripts/server-wiki-distill.sh"
 } > "$SYSTEMD/obsidian-server-distill.service"
 cat > "$SYSTEMD/obsidian-server-distill.timer" <<TEOF
 [Unit]
@@ -112,7 +109,7 @@ echo "✅ obsidian-server-distill 单元已生成"
   echo "[Unit]"
   echo "Description=obsidian-server-index"
   echo "$ENV_BLOCK"
-  echo "ExecStart=$HERMES_HOME/scripts/obsidian_cron.sh"
+  echo "ExecStart=$REPO_DIR/scripts/obsidian_cron.sh"
 } > "$SYSTEMD/obsidian-server-index.service"
 cat > "$SYSTEMD/obsidian-server-index.timer" <<TEOF
 [Unit]
@@ -134,7 +131,7 @@ write_unit "wiki-git-autocommit" "wiki_git_autocommit.sh" "1h"
   echo "[Unit]"
   echo "Description=obsidian-server-chroma"
   echo "$ENV_BLOCK"
-  echo "ExecStart=$HERMES_HOME/scripts/server-wiki-chroma.sh"
+  echo "ExecStart=$REPO_DIR/scripts/server-wiki-chroma.sh"
 } > "$SYSTEMD/obsidian-server-chroma.service"
 cat > "$SYSTEMD/obsidian-server-chroma.timer" <<TEOF
 [Unit]
@@ -161,7 +158,7 @@ done
 # 注意：全新服务器 crontab -l 无输出时 grep -v 退出码 1，set -e 会杀死子 shell
 #       → echo 不执行、crontab 收到空输入（清空 crontab）、脚本 exit 1。
 #       用 || true 保证 grep 失败不中断，echo 始终执行。
-CRON_LINE="3 * * * * $HERMES_HOME/scripts/export-all.sh >> $HOME/export.log 2>&1"
+CRON_LINE="3 * * * * $REPO_DIR/scripts/export-all.sh >> $HOME/export.log 2>&1"
 (crontab -l 2>/dev/null | grep -v "export-all.sh" || true; echo "$CRON_LINE") | crontab -
 echo "✅ crontab 导出调度已配置（每小时 3 分）"
 

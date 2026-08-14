@@ -185,17 +185,25 @@ journalctl --user -u mac-session-pull --since "1h"
 
 ## 6. 首次引导
 
-1. 在 iCloud Vault 建 `CLAUDE.md` + `Context/` + `Wiki/` 骨架（见 `templates/vault-skeleton/`）
+1. 在 iCloud Vault 建 `CLAUDE.md` + `Context/` + `Wiki/` 骨架
 2. 手动跑一次全链路验证：
 
 ```bash
 # 拉取 → 导出 → 蒸馏（dry-run）
-bash ~/.hermes/scripts/mac-session-pull.sh
-bash ~/.hermes/scripts/ai_chat_export_cron.sh
-bash ~/.hermes/scripts/ai_chat_unified_distill_cron.sh --dry-run
+bash <REPO_DIR>/scripts/mac-session-pull.sh
+bash <REPO_DIR>/scripts/ai_chat_export_cron.sh
+bash <REPO_DIR>/scripts/ai_chat_unified_distill_cron.sh --dry-run
 ```
 
 3. 确认 `~/obsidian/*/Chat Logs/` 出现 Raw md，`Wiki/Log.md` 开始追加
+
+### 更新仓库（git pull 后）
+
+systemd/crontab 全部指向**仓库路径**（活代码），所以：
+
+- **`git pull` 拉取新代码后立即生效**，无需任何额外操作（不再有脚本副本需要同步）
+- **仓库目录被移动/删除**：重新运行 `bash scripts/setup-server.sh` 即可重新生成所有 unit（30 秒）
+- 改配置（`.env`）后建议重跑一次 `setup-server.sh`，让 systemd 的 `Environment=` 注入同步更新
 
 ## 7. 升级保护（Hermes）
 

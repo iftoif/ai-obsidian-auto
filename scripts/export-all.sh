@@ -19,8 +19,8 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 
 FAILED=0
 
-# Claude/Pi/DSH 导出（统一导出器）
-AI_EXPORT="$HERMES_HOME/scripts/ai_chat_export.py"
+# Claude/Pi/DSH 导出（统一导出器）——同目录互调（git pull 更新后立即生效）
+AI_EXPORT="$SCRIPT_DIR/ai_chat_export.py"
 if [ -f "$AI_EXPORT" ]; then
   if python3 "$AI_EXPORT" --tool all 2>&1 | tail -3; then
     echo "✅ Claude/Pi/DSH 导出完成"
