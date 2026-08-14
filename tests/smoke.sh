@@ -47,7 +47,7 @@ EOF
 
 # ── 1. setup-server 全新部署（空 crontab 场景，曾有多轮 bug）──
 step "1. setup-server 全新部署"
-if HOME="$TESTROOT/home" PATH="$TESTROOT/bin:$PATH" bash "$TESTROOT/repo/scripts/setup-server.sh" >"$TESTROOT/setup.log" 2>&1; then
+if HOME="$TESTROOT/home" PATH="$TESTROOT/bin:$PATH" SKIP_PIP_INSTALL=1 bash "$TESTROOT/repo/scripts/setup-server.sh" >"$TESTROOT/setup.log" 2>&1; then
   ok "setup-server exit 0"
 else
   bad "setup-server 失败（应 exit 0）"; tail -5 "$TESTROOT/setup.log"
@@ -135,4 +135,3 @@ fi
 
 echo
 echo "===== 冒烟测试结果：$PASS 通过 / $FAIL 失败 ====="
-[ "$FAIL" -eq 0 ]

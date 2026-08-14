@@ -38,7 +38,7 @@ EOF
 echo "▸ env 传播全链路"
 
 # 1. setup-server 生成 unit
-HOME="$TESTROOT/home" PATH="$TESTROOT/bin:$PATH" bash "$TESTROOT/repo/scripts/setup-server.sh" >/dev/null 2>&1
+HOME="$TESTROOT/home" PATH="$TESTROOT/bin:$PATH" SKIP_PIP_INSTALL=1 bash "$TESTROOT/repo/scripts/setup-server.sh" >/dev/null 2>&1
 
 # 2. 检查 unit 的 Environment 注入
 if grep -q 'Environment="OBSIDIAN_VAULT_PATH=' "$TESTROOT/home/.config/systemd/user/vault-pull.service"; then
@@ -68,7 +68,7 @@ cat > "$TESTROOT/repo2/.env" <<EOF
 OBSIDIAN_VAULT_PATH=$TESTROOT/vault
 SSH_USER=test
 EOF
-if { HOME="$TESTROOT/home" PATH="$TESTROOT/bin:$PATH" bash "$TESTROOT/repo2/scripts/setup-server.sh" 2>&1 || true; } | grep -q '请填写 PRIMARY_MAC_IP'; then
+if { HOME="$TESTROOT/home" PATH="$TESTROOT/bin:$PATH" SKIP_PIP_INSTALL=1 bash "$TESTROOT/repo2/scripts/setup-server.sh" 2>&1 || true; } | grep -q '请填写 PRIMARY_MAC_IP'; then
   ok "缺 PRIMARY_MAC_IP → 友好报错"
 else
   bad "缺 PRIMARY_MAC_IP 未友好报错"

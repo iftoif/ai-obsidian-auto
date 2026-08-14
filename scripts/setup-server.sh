@@ -50,7 +50,10 @@ echo "✅ Vault 目录结构已创建"
 # 1.5 创建 Python 依赖 venv（索引/Chroma 脚本依赖 obsidian-backup-env）
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 VENV="$HERMES_HOME/obsidian-backup-env"
-if [ ! -x "$VENV/bin/python3" ]; then
+# SKIP_PIP_INSTALL=1: skip venv/pip (tests/CI, avoids 2GB download)
+if [ "${SKIP_PIP_INSTALL:-0}" = "1" ]; then
+  echo "SKIP_PIP_INSTALL=1, skipping venv/pip (test only)"
+elif [ ! -x "$VENV/bin/python3" ]; then
   echo "创建 Python venv: $VENV（zstandard 用于 DSH 解压）..."
   python3 -m venv "$VENV" || { echo "⚠️ venv 创建失败（无 python3-venv？），索引/Chroma 将在首次运行时报错" >&2; }
   if [ -x "$VENV/bin/pip" ]; then
