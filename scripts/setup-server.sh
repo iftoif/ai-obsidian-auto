@@ -63,7 +63,7 @@ write_unit() {
     echo "[Unit]"
     echo "Description=$name"
     echo "$ENV_BLOCK"
-    echo "ExecStart=$REPO_DIR/scripts/$script"
+    echo "ExecStart=$HERMES_HOME/scripts/$script"   # 统一用 HERMES_HOME（脚本已复制过去，仓库移动不影响）
   } > "$SYSTEMD/$name.service"
   cat > "$SYSTEMD/$name.timer" <<TEOF
 [Unit]
@@ -89,11 +89,11 @@ write_unit "hermes-self-heal" "hermes-self-heal.sh" "1h"
   echo "[Unit]"
   echo "Description=obsidian-server-distill"
   echo "$ENV_BLOCK"
-  echo "Environment=\"AI_DISTILL_PROVIDER=${AI_DISTILL_PROVIDER:-your-provider}\""
-  echo "Environment=\"AI_DISTILL_MODEL=${AI_DISTILL_MODEL:-your-model}\""
+  echo "Environment=\"AI_DISTILL_PROVIDER=${AI_DISTILL_PROVIDER:-openai-codex}\""
+  echo "Environment=\"AI_DISTILL_MODEL=${AI_DISTILL_MODEL:-gpt-5.6-luna}\""
   echo "Environment=\"FALLBACK_PROVIDERS_CSV=${FALLBACK_PROVIDERS_CSV:-}\""
   echo "Environment=\"FALLBACK_MODELS_CSV=${FALLBACK_MODELS_CSV:-}\""
-  echo "ExecStart=$REPO_DIR/scripts/server-wiki-distill.sh"
+  echo "ExecStart=$HERMES_HOME/scripts/server-wiki-distill.sh"
 } > "$SYSTEMD/obsidian-server-distill.service"
 cat > "$SYSTEMD/obsidian-server-distill.timer" <<TEOF
 [Unit]
@@ -112,7 +112,7 @@ echo "✅ obsidian-server-distill 单元已生成"
   echo "[Unit]"
   echo "Description=obsidian-server-index"
   echo "$ENV_BLOCK"
-  echo "ExecStart=$REPO_DIR/scripts/obsidian_cron.sh"
+  echo "ExecStart=$HERMES_HOME/scripts/obsidian_cron.sh"
 } > "$SYSTEMD/obsidian-server-index.service"
 cat > "$SYSTEMD/obsidian-server-index.timer" <<TEOF
 [Unit]
@@ -134,7 +134,7 @@ write_unit "wiki-git-autocommit" "wiki_git_autocommit.sh" "1h"
   echo "[Unit]"
   echo "Description=obsidian-server-chroma"
   echo "$ENV_BLOCK"
-  echo "ExecStart=$REPO_DIR/scripts/server-wiki-chroma.sh"
+  echo "ExecStart=$HERMES_HOME/scripts/server-wiki-chroma.sh"
 } > "$SYSTEMD/obsidian-server-chroma.service"
 cat > "$SYSTEMD/obsidian-server-chroma.timer" <<TEOF
 [Unit]
@@ -158,7 +158,7 @@ for t in vault-pull node-discovery mac-session-pull hermes-self-heal obsidian-se
 done
 
 # 4. 配置 crontab 导出调度
-CRON_LINE="3 * * * * $REPO_DIR/scripts/export-all.sh >> $HOME/export.log 2>&1"
+CRON_LINE="3 * * * * $HERMES_HOME/scripts/export-all.sh >> $HOME/export.log 2>&1"
 (crontab -l 2>/dev/null | grep -v "export-all.sh"; echo "$CRON_LINE") | crontab -
 echo "✅ crontab 导出调度已配置（每小时 3 分）"
 
