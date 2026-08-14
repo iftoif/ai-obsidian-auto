@@ -52,12 +52,28 @@ if HOME="$TESTROOT/home" PATH="$TESTROOT/bin:$PATH" bash "$TESTROOT/repo/scripts
 else
   bad "setup-server 失败（应 exit 0）"; tail -5 "$TESTROOT/setup.log"
 fi
-grep -q "部署完成" "$TESTROOT/setup.log" && ok "打印部署完成" || bad "未打印部署完成"
-[ -f "$TESTROOT/crontab-received.txt" ] && grep -q "export-all.sh" "$TESTROOT/crontab-received.txt" && ok "crontab 收到 export-all 调度" || bad "crontab 未收到 export-all"
-UNIT_COUNT=$(ls "$TESTROOT/home/.config/systemd/user/"*.service 2>/dev/null | wc -l | tr -d ' ')
-[ "$UNIT_COUNT" -eq 8 ] && ok "8 个 service 生成（实得 ${UNIT_COUNT}）" || bad "service 数不对（实得 ${UNIT_COUNT}，应为 8）"
-grep -q "ExecStart=$TESTROOT/repo/scripts/vault-pull.sh" "$TESTROOT/home/.config/systemd/user/vault-pull.service" && ok "ExecStart 指向活代码路径" || bad "ExecStart 路径不对"
-grep -q "FALLBACK_PROVIDERS_CSV=deepseek" "$TESTROOT/home/.config/systemd/user/obsidian-server-distill.service" && ok "蒸馏 service 注入 fallback" || bad "fallback 未注入"
+if grep -q "部署完成" "$TESTROOT/setup.log"; then ok "打印部署完成"; else bad "未打印部署完成"; fi
+if [ -f "$TESTROOT/crontab-received.txt" ] && grep -q "export-all.sh" "$TESTROOT/crontab-received.txt"; then
+  ok "crontab 收到 export-all 调度"
+else
+  bad "crontab 未收到 export-all"
+fi
+UNIT_COUNT=$(find "$TESTROOT/home/.config/systemd/user" -maxdepth 1 -name '*.service' 2>/dev/null | wc -l | tr -d ' ')
+if [ "$UNIT_COUNT" -eq 8 ]; then
+  ok "8 个 service 生成（实得 ${UNIT_COUNT}）"
+else
+  bad "service 数不对（实得 ${UNIT_COUNT}，应为 8）"
+fi
+if grep -q "ExecStart=$TESTROOT/repo/scripts/vault-pull.sh" "$TESTROOT/home/.config/systemd/user/vault-pull.service"; then
+  ok "ExecStart 指向活代码路径"
+else
+  bad "ExecStart 路径不对"
+fi
+if grep -q "FALLBACK_PROVIDERS_CSV=deepseek" "$TESTROOT/home/.config/systemd/user/obsidian-server-distill.service"; then
+  ok "蒸馏 service 注入 fallback"
+else
+  bad "fallback 未注入"
+fi
 
 # ── 2. wiki_git_autocommit 全新部署（部分目录缺失场景）──
 step "2. wiki_git_autocommit 首次提交"
@@ -67,8 +83,16 @@ if HOME="$TESTROOT/home" OBSIDIAN_VAULT_PATH="$TESTROOT/vault" WIKI_REPO="$TESTR
 else
   bad "autocommit 失败"; cat "$TESTROOT/auto.err"
 fi
-git -C "$TESTROOT/home/obsidian-wiki" log --oneline >/dev/null 2>&1 && ok "首次提交成功" || bad "无提交记录"
-git -C "$TESTROOT/home/obsidian-wiki" ls-files | grep -q "Wiki/note1.md" && ok "Wiki/note1.md 已入库" || bad "note1.md 未入库"
+if git -C "$TESTROOT/home/obsidian-wiki" log --oneline >/dev/null 2>&1; then
+  ok "首次提交成功"
+else
+  bad "无提交记录"
+fi
+if git -C "$TESTROOT/home/obsidian-wiki" ls-files | grep -q "Wiki/note1.md"; then
+  ok "Wiki/note1.md 已入库"
+else
+  bad "note1.md 未入库"
+fi
 
 # ── 3. node-discovery 注册源校验（好/坏文件）──
 step "3. node-discovery 校验"
@@ -82,8 +106,16 @@ cat > "$TESTROOT/vault/.hermes-nodes/good-mac-20260815-120000.json" <<EOF
 EOF
 echo '{"hostname":"evil","role":"admin","lan_ip":"999.1.1.1"}' > "$TESTROOT/vault/.hermes-nodes/evil-20260815-120001.json"
 HOME="$TESTROOT/home" OBSIDIAN_VAULT_PATH="$TESTROOT/vault" bash "$REPO/scripts/node-discovery.sh" >/dev/null 2>&1
-grep -q "$PUB" "$TESTROOT/home/.ssh/authorized_keys" 2>/dev/null && ok "合法公钥自动信任" || bad "合法公钥未信任"
-grep -q "evil" "$TESTROOT/home/.ssh/authorized_keys" 2>/dev/null && bad "非法节点被信任" || ok "非法节点被拒"
+if grep -q "$PUB" "$TESTROOT/home/.ssh/authorized_keys" 2>/dev/null; then
+  ok "合法公钥自动信任"
+else
+  bad "合法公钥未信任"
+fi
+if grep -q "evil" "$TESTROOT/home/.ssh/authorized_keys" 2>/dev/null; then
+  bad "非法节点被信任"
+else
+  ok "非法节点被拒"
+fi
 
 # ── 3.5 .env.example 可被 source（防回归：尖括号占位符被 bash 当重定向）──
 step "3.5 .env.example source 检查"
