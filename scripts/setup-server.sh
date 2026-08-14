@@ -37,8 +37,18 @@ mkdir -p "${OBSIDIAN_VAULT_PATH}/Wiki/Sources" \
          "${OBSIDIAN_VAULT_PATH}/Shared/Lessons"
 echo "✅ Vault 目录结构已创建"
 
-# 脚本直接从仓库路径运行（git pull 更新立即生效，无需拷贝步骤；
-# 仓库移动后重跑本脚本即可）。脚本内部互调用同目录引用（$SCRIPT_DIR）。
+# 1.5 创建 Python 依赖 venv（索引/Chroma 脚本依赖 obsidian-backup-env）
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+VENV="$HERMES_HOME/obsidian-backup-env"
+if [ ! -x "$VENV/bin/python3" ]; then
+  echo "创建 Python venv: $VENV（zstandard 用于 DSH 解压）..."
+  python3 -m venv "$VENV" || { echo "⚠️ venv 创建失败（无 python3-venv？），索引/Chroma 将在首次运行时报错" >&2; }
+  if [ -x "$VENV/bin/pip" ]; then
+    "$VENV/bin/pip" install -q zstandard 2>/dev/null || echo "⚠️ zstandard 安装失败（DSH 导出将跳过）" >&2
+  fi
+else
+  echo "✅ venv 已存在，跳过创建"
+fi
 
 # 2. 创建 systemd 定时器（拉取 + 发现 + 蒸馏 + 索引 + Git + 自愈）
 mkdir -p "$HOME/.config/systemd/user"

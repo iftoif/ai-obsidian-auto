@@ -28,7 +28,7 @@ from typing import Iterable
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 KEYCHAIN = SCRIPT_DIR / "keychain_secret.swift"
-SECRET_REF_RE = re.compile(r"\[SECRET:[a-zA-Z0-9_-]+:(?:sec_[a-zA-Z0-9_]+|UNSTORED-[a-f0-9]+|DRYRUN-[a-f0-9]+)\]")
+SECRET_REF_RE = re.compile(r"\[SECRET:[a-zA-Z0-9_-]+:(?:sec_[a-zA-Z0-9_-]+|UNSTORED-[a-f0-9]+|DRYRUN-[a-f0-9]+)\]")
 
 
 @dataclasses.dataclass(frozen=True)

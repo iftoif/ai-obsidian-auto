@@ -53,9 +53,18 @@ def save_json(path: Path, value: Any) -> None:
 def parse_time(value: Any) -> dt.datetime:
     if isinstance(value, (int, float)):
         ts = float(value)
-        if ts > 1e12:
+        # 按量级归一化到秒：微秒(>1e15) /1e6，毫秒(>1e12) /1e3，
+        # 极大值直接 clamp 到可解析范围（异常时间戳不丢消息，用当前时间兜底）
+        if ts > 1e15:
+            ts /= 1e6
+        elif ts > 1e12:
             ts /= 1000
-        return dt.datetime.fromtimestamp(ts, TZ)
+        if ts > 4_000_000_000:  # 超出合理范围（>2096 年）
+            return dt.datetime.now(TZ)
+        try:
+            return dt.datetime.fromtimestamp(ts, TZ)
+        except (ValueError, OverflowError, OSError):
+            return dt.datetime.now(TZ)
     if isinstance(value, str) and value:
         try:
             s = value.replace("Z", "+00:00")
