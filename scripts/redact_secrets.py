@@ -245,6 +245,7 @@ def main() -> int:
     p_text.add_argument("--dry-run", action="store_true")
     p_scan = sub.add_parser("scan")
     p_scan.add_argument("--path", action="append", required=True)
+    p_scan.add_argument("--dry-run", action="store_true", help="兼容参数：scan 本身只读，此参数无额外效果")
     p_redact = sub.add_parser("redact")
     p_redact.add_argument("--path", action="append", required=True)
     p_redact.add_argument("--apply", action="store_true")

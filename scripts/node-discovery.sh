@@ -105,7 +105,10 @@ then
           if command -v flock >/dev/null 2>&1; then
             flock -x 200
           fi
-          if ! grep -qF "$NODE_PUBKEY" "$AUTH_KEYS" 2>/dev/null; then
+          # 按公钥本体（类型+base64）去重：注释文本不同不视为新公钥，
+          # 避免同一把密钥因注释变化在 authorized_keys 里无限堆积
+          KEY_BODY=$(echo "$NODE_PUBKEY" | awk '{print $1" "$2}')
+          if ! awk '{print $1" "$2}' "$AUTH_KEYS" 2>/dev/null | grep -qF "$KEY_BODY"; then
             echo "$NODE_PUBKEY" >> "$AUTH_KEYS"
             echo "🔑 已建立 SSH 信任：$NODE_HOST 公钥已加入 authorized_keys" >> "$LOG"
           fi

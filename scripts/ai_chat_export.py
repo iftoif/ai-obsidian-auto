@@ -187,7 +187,7 @@ def _extract_image_refs(source, line_no, vault, tool, ts, session, line_cache=No
         _msg = _obj.get("message") if isinstance(_obj.get("message"), dict) else {}
         _imgs = _iter_images_from_content(_msg.get("content"))
         for _seq, (_mime, _data) in enumerate(_imgs, start=1):
-            _link = save_image_to_assets(vault, tool, ts.date(), session, _data, _mime, _seq)
+            _link = save_image_to_assets(vault, tool, ts.date(), session, _data, _mime, _seq, line_no)
             if _link:
                 refs.append(_link)
     except Exception:
@@ -203,8 +203,13 @@ def save_image_to_assets(
     image_b64: str,
     mime_type: str,
     seq: int,
+    line_no: int = 0,
 ) -> str | None:
-    """把 base64 图片解码保存到 {tool}/Chat Logs/assets/，返回 Obsidian wikilink。"""
+    """把 base64 图片解码保存到 {tool}/Chat Logs/assets/，返回 Obsidian wikilink。
+
+    fname 含 line_no：同一会话多条消息各带图片时不会互相覆盖
+    （seq 只是单条消息内的图片序号，不含行号会导致后写覆盖先写）。
+    """
     if not image_b64:
         return None
     try:
@@ -217,7 +222,7 @@ def save_image_to_assets(
     safe_session = re.sub(r"[^A-Za-z0-9._-]", "-", session)[:40]
     assets_dir = vault / tool / "Chat Logs" / "assets" / day.isoformat()
     assets_dir.mkdir(parents=True, exist_ok=True)
-    fname = f"{safe_session}-{seq:04d}{ext}"
+    fname = f"{safe_session}-{line_no:06d}-{seq:02d}{ext}"
     fpath = assets_dir / fname
     fpath.write_bytes(raw)
     rel = fpath.relative_to(vault)

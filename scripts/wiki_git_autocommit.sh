@@ -48,7 +48,15 @@ if [ "${#add_paths[@]}" -gt 0 ]; then
 fi
 if git -C "$REPO" diff --cached --quiet; then exit 0; fi
 if git -C "$REPO" diff --cached --binary | grep -Eiq 'sk-[A-Za-z0-9]|tvly-|cookie[=:]|password[=:]|api[_-]?key[=:][^$]|bearer [A-Za-z0-9]|ghp_[A-Za-z0-9]|github_pat_|xox[baprs]-|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY'; then
-  echo 'secret-like content detected; refusing commit' >&2
+  SUSPECT_FILES=$(git -C "$REPO" diff --cached --name-only | tr '\n' ' ')
+  echo "🔒 拒绝提交：检测到疑似密钥内容" >&2
+  echo "   涉及文件: $SUSPECT_FILES" >&2
+  echo "   处理：删除/脱敏该内容后，备份自动恢复；本轮不推送" >&2
+  # 主动 Telegram 告警（未装 Hermes 时静默跳过）
+  HERMES_SEND="$HERMES_HOME/hermes-agent/venv/bin/hermes"
+  if [ -x "$HERMES_SEND" ]; then
+    echo "🔒 Wiki Git 备份被密钥拦截，未推送。涉及文件: $SUSPECT_FILES" | "$HERMES_SEND" send -t telegram >>"$HERMES_HOME/logs/wiki-git-autocommit.log" 2>&1 || true
+  fi
   git -C "$REPO" reset >/dev/null
   exit 78
 fi

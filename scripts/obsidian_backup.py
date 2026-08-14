@@ -110,8 +110,9 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
                             cur = fm.get(current_key)
                             if isinstance(cur, list):
                                 cur.append(item)
-                            else:
-                                fm[current_key] = [item]
+                            # 关键：已有标量值时跳过缩进行（不覆盖标量，
+                            # 避免 title 被替换成 list 导致 get_title 返回 "['x']" 字面量）
+                            # 标量值后的缩进续行属畸形 YAML，直接忽略
     return fm, body
 
 
