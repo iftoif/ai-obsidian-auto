@@ -1,0 +1,49 @@
+name: auto-tag
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  auto-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 自动 bump 版本并打 tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          # 读最新版本 tag（无则从 v0.0.0 起）
+          LATEST=$(git tag -l 'v*' | sort -V | tail -1 || true)
+          LATEST=${LATEST:-v0.0.0}
+          MSG=$(git log -1 --format=%s)
+          echo "最新版本: $LATEST | 提交: $MSG"
+
+          # 按提交类型决定 bump：
+          #   BREAKING → major / feat: → minor / 其余 → patch
+          if echo "$MSG" | grep -q 'BREAKING'; then
+            NEW=$(echo "$LATEST" | awk -F. '{print $1+1".0.0"}')
+          elif [[ "$MSG" == feat:* ]]; then
+            NEW=$(echo "$LATEST" | awk -F. '{print $1"."$2+1".0"}')
+          else
+            NEW=$(echo "$LATEST" | awk -F. '{print $1"."$2"."$3+1}')
+          fi
+          echo "新版本: $NEW"
+
+          # 若该版本 tag 已存在（重复触发）则跳过
+          if git tag -l "$NEW" | grep -q .; then
+            echo "tag $NEW 已存在，跳过"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEW" -m "$NEW: $MSG"
+          git push origin "$NEW"
+          echo "✅ 已打 tag: $NEW"
