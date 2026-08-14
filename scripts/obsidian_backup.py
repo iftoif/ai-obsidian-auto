@@ -156,7 +156,9 @@ def extract_aliases(body: str) -> list[str]:
             try:
                 aliases.extend(json.loads(raw))
             except json.JSONDecodeError:
-                pass
+                # Obsidian 常见写法 aliases: [别名A, 别名B]（无引号非 JSON）→ 逗号分割
+                inner = raw[1:-1]
+                aliases.extend(a.strip().strip('"').strip("'") for a in inner.split(",") if a.strip())
         else:
             aliases.append(raw.strip('"').strip("'"))
     return aliases
