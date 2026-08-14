@@ -158,8 +158,11 @@ for t in vault-pull node-discovery mac-session-pull hermes-self-heal obsidian-se
 done
 
 # 4. 配置 crontab 导出调度
+# 注意：全新服务器 crontab -l 无输出时 grep -v 退出码 1，set -e 会杀死子 shell
+#       → echo 不执行、crontab 收到空输入（清空 crontab）、脚本 exit 1。
+#       用 || true 保证 grep 失败不中断，echo 始终执行。
 CRON_LINE="3 * * * * $HERMES_HOME/scripts/export-all.sh >> $HOME/export.log 2>&1"
-(crontab -l 2>/dev/null | grep -v "export-all.sh"; echo "$CRON_LINE") | crontab -
+(crontab -l 2>/dev/null | grep -v "export-all.sh" || true; echo "$CRON_LINE") | crontab -
 echo "✅ crontab 导出调度已配置（每小时 3 分）"
 
 echo ""

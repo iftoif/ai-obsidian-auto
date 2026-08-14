@@ -541,11 +541,9 @@ def main() -> int:
     vault = Path(args.vault).expanduser().resolve()
     state_dir = hermes_home() / "data" / "obsidian"
     tools = ["Claude", "Pi", "DSH"] if args.tool == "all" else [args.tool]
-    any_new = False
     for tool in tools:
         files_seen, files_changed, exported = export_tool(tool, vault, state_dir)
         if exported:
-            any_new = True
             print(f"✅ {tool} 导出完成: files_seen={files_seen}, files_changed={files_changed}, messages_exported={exported}")
         else:
             print(f"{tool}: 无新消息")
