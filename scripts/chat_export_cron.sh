@@ -11,8 +11,12 @@ echo "=== chat_export $(date +%F_%T) ==="
 
 CHAT_EXPORT="$HERMES_HOME/scripts/chat_export.py"
 if [ -f "$CHAT_EXPORT" ]; then
-  python3 "$CHAT_EXPORT" 2>&1 | tail -3
-  echo "✅ Hermes 日志导出完成"
+  if python3 "$CHAT_EXPORT" 2>&1 | tail -3; then
+    echo "✅ Hermes 日志导出完成"
+  else
+    echo "❌ Hermes 日志导出失败" >&2
+    exit 1
+  fi
 else
   echo "⚠️ 未找到 chat_export.py（未装 Hermes Gateway 则忽略）"
 fi

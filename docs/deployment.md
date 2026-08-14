@@ -112,6 +112,22 @@ EnvironmentFile=-%h/.config/hermes/secret-store/hermes.env
 
 ## 4. crontab（导出）
 
+> ⚠️ **二选一**，不要两个方案都配（会导致同一导出每小时被跑两遍）：
+
+### 方案 A（推荐）：单条 cron 跑 export-all.sh
+
+`setup-server.sh` 自动注册的就是这条，手动配也一样：
+
+```cron
+3 * * * *  <REPO_DIR>/scripts/export-all.sh >> $HOME/export.log 2>&1
+```
+
+export-all.sh 内部顺序执行 Hermes/Claude/Pi/DSH/Codex 全部导出，并检查每个环节退出码（失败 exit 1）。
+
+### 方案 B（替代）：三条 cron 分开调度
+
+想给不同导出设置不同频率/独立日志时用这条路径（脚本内部同样检查退出码，失败不会假报成功）：
+
 ```bash
 crontab -e
 ```

@@ -11,8 +11,12 @@ echo "=== ai_chat_export $(date +%F_%T) ==="
 
 AI_EXPORT="$HERMES_HOME/scripts/ai_chat_export.py"
 if [ -f "$AI_EXPORT" ]; then
-  python3 "$AI_EXPORT" --tool all 2>&1 | tail -3
-  echo "✅ AI 会话导出完成"
+  if python3 "$AI_EXPORT" --tool all 2>&1 | tail -3; then
+    echo "✅ AI 会话导出完成"
+  else
+    echo "❌ AI 会话导出失败" >&2
+    exit 1
+  fi
 else
   echo "⚠️ 未找到 ai_chat_export.py"
 fi

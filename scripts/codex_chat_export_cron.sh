@@ -11,8 +11,12 @@ echo "=== codex_export $(date +%F_%T) ==="
 
 CODEX_EXPORT="$OBSIDIAN_VAULT_PATH/Codex/tools/export_codex_chat_logs.py"
 if [ -f "$CODEX_EXPORT" ]; then
-  python3 "$CODEX_EXPORT" --vault "$OBSIDIAN_VAULT_PATH" --codex-home "$HOME/.codex" 2>&1 | tail -2
-  echo "✅ Codex 导出完成"
+  if python3 "$CODEX_EXPORT" --vault "$OBSIDIAN_VAULT_PATH" --codex-home "$HOME/.codex" 2>&1 | tail -2; then
+    echo "✅ Codex 导出完成"
+  else
+    echo "❌ Codex 导出失败" >&2
+    exit 1
+  fi
 else
   echo "⚠️ 未找到 export_codex_chat_logs.py"
 fi
