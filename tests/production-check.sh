@@ -91,9 +91,11 @@ done
 
 # ── 5. 关键服务日志无近期错误 ──
 section "5. 最近 30 分钟服务错误"
-ERR=$(journalctl --user --since '30 min ago' --no-pager 2>/dev/null | grep -cE 'obsidian.*(error|Traceback|Failed)' || true)
+# 排除桌面索引噪音（localsearch/Tracker 扫 obsidian 路径的假图片会产生
+# 'Could not get any metadata' error——与系统运行无关，纯误报源）
+ERR=$(journalctl --user --since '30 min ago' --no-pager 2>/dev/null | grep -E 'obsidian.*(error|Traceback|Failed)' | grep -vE 'localsearch|Tracker' | wc -l | tr -d ' ')
 if [ "$ERR" -eq 0 ]; then
-  ok "journalctl 无 obsidian 相关错误"
+  ok "journalctl 无 obsidian 相关错误（已排除桌面索引噪音）"
 else
   bad "journalctl 有 $ERR 条错误（obsidian 相关）"
 fi
