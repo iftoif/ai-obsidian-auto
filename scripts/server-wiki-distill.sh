@@ -5,6 +5,6 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 export OBSIDIAN_VAULT_PATH="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 export HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
-export AI_DISTILL_PROVIDER="${AI_DISTILL_PROVIDER:-your-provider}"
-export AI_DISTILL_MODEL="${AI_DISTILL_MODEL:-your-model}"
+export AI_DISTILL_PROVIDER="${AI_DISTILL_PROVIDER:-openai-codex}"
+export AI_DISTILL_MODEL="${AI_DISTILL_MODEL:-gpt-5.6-luna}"
 exec "$SCRIPT_DIR/ai_chat_unified_distill_cron.sh" "$@"   # 同目录互调

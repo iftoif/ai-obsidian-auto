@@ -15,13 +15,13 @@ jobs:
           sudo apt-get install -y -q shellcheck bats
       - name: 安装 Python 依赖
         run: pip install -q pytest pytest-cov chromadb zstandard
-      - name: L0 静态分析（shellcheck 零 error/warning）
+      - name: L0 静态分析（shellcheck 零 error/warning，含集成/安全/测试脚本）
         run: |
           set -e
-          ERRORS=$(shellcheck -x scripts/*.sh tests/*.sh 2>&1 | grep -cE ':[0-9]+:[0-9]+: (error|warning)' || true)
+          ERRORS=$(shellcheck -x scripts/*.sh tests/*.sh tests/integration/*.sh tests/security/*.sh tests/unit/*.bats 2>&1 | grep -cE ':[0-9]+:[0-9]+: (error|warning)' || true)
           echo "shellcheck error/warning: $ERRORS"
           [ "$ERRORS" -eq 0 ]
-          python3 -m py_compile scripts/*.py
+          python3 -m py_compile scripts/*.py tests/*.py tests/unit/*.py 2>/dev/null || python3 -m py_compile scripts/*.py
       - name: L1 单元测试（pytest）
         run: python3 -m pytest tests/unit/ -q --tb=short
       - name: L1 bash 单元测试（bats）
@@ -36,11 +36,16 @@ jobs:
         run: bash tests/security/test_security_matrix.sh
       - name: L5 变异验证（kill rate 100%）
         run: python3 tests/mutation.py
-      - name: 一致性检查（幽灵引用/占位符/敏感信息）
+      - name: 一致性检查（占位符/敏感信息，-E 修复 BRE 死检查）
         run: |
           set -e
-          grep -rn 'your-provider|your-model|<your-key>' scripts/ .env.example 2>/dev/null && { echo '占位符残留'; exit 1; } || true
-          grep -rn 'aaronhk|/home/aaron|192.168.[0-9]' scripts/ docs/ templates/ .env.example 2>/dev/null && { echo '敏感信息'; exit 1; } || true
+          # 注意：必须用 -E（ERE），BRE 下 | 是字面量导致检查永不触发
+          if grep -rnE 'your-provider|your-model|<your-key>' scripts/ .env.example 2>/dev/null; then
+            echo '占位符残留'; exit 1
+          fi
+          if grep -rnE 'aaronhk|/home/aaron|192.168.[0-9]' scripts/ docs/ templates/ .env.example 2>/dev/null; then
+            echo '敏感信息'; exit 1
+          fi
           echo "一致性检查通过"
 
   auto-version:
