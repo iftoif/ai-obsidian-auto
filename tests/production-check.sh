@@ -109,4 +109,13 @@ echo
 echo "═══════════════════════════════════"
 echo "  生产健康检查：$PASS 通过 / $FAIL 失败"
 echo "═══════════════════════════════════"
+
+# 失败时发通知（生产实际渠道：微信个人号 DM；Telegram 未配置 bot token）
+if [ "$FAIL" -gt 0 ]; then
+  HERMES_SEND="$HOME/.hermes/hermes-agent/venv/bin/hermes"
+  if [ -x "$HERMES_SEND" ]; then
+    TARGET="weixin:o9cq805KD52wqDf3gaepSLqG2aeg@im.wechat"
+    echo "🔴 生产健康检查失败：$FAIL 项未通过（$PASS 通过）" | "$HERMES_SEND" send -t "$TARGET" >>"$HOME/.hermes/logs/production-check.log" 2>&1 || true
+  fi
+fi
 [ "$FAIL" -eq 0 ]
