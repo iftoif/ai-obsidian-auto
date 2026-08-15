@@ -35,7 +35,8 @@ teardown() {
 }
 
 @test "SSH 保活超时参数存在（防 SSH 卡死）" {
-  REPO_ROOT='/Users/aaronhk/Documents/ai-obsidian-auto'
+  # 相对定位仓库根（不硬编码本机路径，CI/其他机器可跑）
+  REPO_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME:-$0}")" && cd ../.. && pwd)"
   grep -q 'ServerAliveInterval=5' "$REPO_ROOT/scripts/vault-pull.sh"
   grep -q 'ServerAliveCountMax=2' "$REPO_ROOT/scripts/vault-pull.sh"
 }

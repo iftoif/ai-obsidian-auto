@@ -104,21 +104,24 @@ build_prompt() {
   local extra=""
   # vision 能力
   if echo "$VISION_PROVIDERS" | tr ',' "\n" | grep -qx "$prov"; then
-    extra="${extra}${VISION_INSTRUCTION}\n"
+    extra="${extra}${VISION_INSTRUCTION}
+"
   fi
   # tool-use 能力
   if echo "$TOOL_USE_PROVIDERS" | tr ',' "\n" | grep -qx "$prov"; then
-    extra="${extra}${TOOL_INSTRUCTION}\n"
+    extra="${extra}${TOOL_INSTRUCTION}
+"
   fi
   # multilingual 能力
   if echo "$MULTILINGUAL_PROVIDERS" | tr ',' "\n" | grep -qx "$prov"; then
-    extra="${extra}${MULTILINGUAL_INSTRUCTION}\n"
+    extra="${extra}${MULTILINGUAL_INSTRUCTION}
+"
   fi
   # 在「过滤寒暄」前插入能力指令
   if [ -n "$extra" ]; then
-    echo "${PROMPT_BASE/过滤寒暄/${extra}过滤寒暄}"
+    echo -e "${PROMPT_BASE/过滤寒暄/${extra}过滤寒暄}"
   else
-    echo "$PROMPT_BASE"
+    echo -e "$PROMPT_BASE"
   fi
 }
 
