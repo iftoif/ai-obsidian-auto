@@ -11,8 +11,17 @@ fi
 VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 PROVIDER="${AI_DISTILL_PROVIDER:-openai-codex}"
 MODEL="${AI_DISTILL_MODEL:-gpt-5.6-luna}"
-# 支持 vision（图片理解）的 provider 列表；不在列表内的 provider 蒸馏时去掉 vision 指令
+
+# ── provider 能力矩阵（按 provider 能力动态调整蒸馏行为）──
+# 列表逗号分隔，provider 名精确匹配（hermes --provider 参数值）
 VISION_PROVIDERS="${AI_DISTILL_VISION_PROVIDERS:-openai-codex,glm-4v,glm-4v-flash,gemini,gpt-4o}"
+LONG_CONTEXT_PROVIDERS="${AI_DISTILL_LONG_CONTEXT_PROVIDERS:-openai-codex,gemini,claude}"
+TOOL_USE_PROVIDERS="${AI_DISTILL_TOOL_USE_PROVIDERS:-openai-codex,claude}"
+MULTILINGUAL_PROVIDERS="${AI_DISTILL_MULTILINGUAL_PROVIDERS:-openai-codex,deepseek,kimi,glm-4v,glm-4v-flash,gemini}"
+# 长上下文 provider 的 manifest 上限（普通 500，长上下文 1500）
+MANIFEST_LIMIT=500
+LONG_MANIFEST_LIMIT=1500
+
 # 加载 secret store（提供 fallback provider 的 API key，如 deepseek/kimi）
 SECRET_ENV="${HOME}/.config/hermes/secret-store/hermes.env"
 if [ -f "$SECRET_ENV" ]; then
@@ -31,10 +40,15 @@ if command -v flock >/dev/null 2>&1; then
   flock -n 9 || { echo "已有蒸馏任务运行，跳过本轮"; exit 0; }
 fi
 
-MANIFEST=$(python3 - "$VAULT" "$STATE_FILE" <<'PY'
+MANIFEST=$(python3 - "$VAULT" "$STATE_FILE" "$MANIFEST_LIMIT" "$LONG_MANIFEST_LIMIT" "$PROVIDER" "$LONG_CONTEXT_PROVIDERS" <<'PY'
 import json, sys
 from pathlib import Path
 vault=Path(sys.argv[1]); state_path=Path(sys.argv[2])
+limit=int(sys.argv[3]); long_limit=int(sys.argv[4])
+prov=sys.argv[5]; long_providers=set(sys.argv[6].split(','))
+# 长上下文 provider 提高上限
+if prov in long_providers:
+    limit = long_limit
 try: old=json.loads(state_path.read_text()).get("files", {})
 except Exception: old={}
 rows=[]
@@ -48,16 +62,16 @@ for root in ("Hermes/Chat Logs","Codex/Chat Logs","Claude/Chat Logs","Pi/Chat Lo
             continue
         st=p.stat(); key=str(p.relative_to(vault)); sig=f"{st.st_mtime_ns}:{st.st_size}"
         if old.get(key) != sig: rows.append(key)
-if len(rows) > 500:
-    print(f"⚠️ 本轮变更文件 {len(rows)} 个，超过上限 500，截断处理（剩余 {len(rows)-500} 个将在后续轮次补齐）", file=sys.stderr)
-print("\n".join(rows[:500]))
+if len(rows) > limit:
+    print(f"⚠️ 本轮变更文件 {len(rows)} 个，超过上限 {limit}，截断处理（剩余 {len(rows)-limit} 个将在后续轮次补齐）", file=sys.stderr)
+print("\n".join(rows[:limit]))
 PY
 )
 if [ -z "$MANIFEST" ]; then
   echo "没有新增或修改的 Raw Chat Logs，跳过本轮蒸馏"
   exit 0
 fi
-PROMPT=$(cat <<EOF
+PROMPT_BASE=$(cat <<EOF
 读取并蒸馏本轮新增或修改的 AI Raw Chat Logs，把高价值内容沉淀到 Obsidian vault 的 Lessons + Wiki 层。
 
 vault 根目录: $VAULT
@@ -80,25 +94,39 @@ Obsidian 语法规范（按官方 obsidian-markdown 惯例）：
 完成后汇报：读取文件、新建/更新页面、关键结论、待核实事项。
 EOF
 )
-# vision 指令按 provider 能力动态注入（无 vision 的 provider 去掉该指令）
-VISION_INSTRUCTION="日志中的 ![[assets/...]] 图片引用，请用 vision 读取图片内容并纳入蒸馏（图表、截图中的关键信息要总结成文字）。
+# ── 能力指令（按 provider 动态注入）──
+VISION_INSTRUCTION="日志中的 ![[assets/...]] 图片引用，请用 vision 读取图片内容并纳入蒸馏（图表、截图中的关键信息要总结成文字）。"
+TOOL_INSTRUCTION="允许使用工具（读文件/搜索/运行命令）辅助理解上下文。"
+MULTILINGUAL_INSTRUCTION="中文输出优先；模型中文不佳时可用英文思考后转成中文输出。"
 
-"
 build_prompt() {
   local prov="$1"
-  if echo "$VISION_PROVIDERS" | tr "," "
-" | grep -qx "$prov"; then
-    echo "${PROMPT_BASE/过滤寒暄/$VISION_INSTRUCTION过滤寒暄}"
+  local extra=""
+  # vision 能力
+  if echo "$VISION_PROVIDERS" | tr ',' "\n" | grep -qx "$prov"; then
+    extra="${extra}${VISION_INSTRUCTION}\n"
+  fi
+  # tool-use 能力
+  if echo "$TOOL_USE_PROVIDERS" | tr ',' "\n" | grep -qx "$prov"; then
+    extra="${extra}${TOOL_INSTRUCTION}\n"
+  fi
+  # multilingual 能力
+  if echo "$MULTILINGUAL_PROVIDERS" | tr ',' "\n" | grep -qx "$prov"; then
+    extra="${extra}${MULTILINGUAL_INSTRUCTION}\n"
+  fi
+  # 在「过滤寒暄」前插入能力指令
+  if [ -n "$extra" ]; then
+    echo "${PROMPT_BASE/过滤寒暄/${extra}过滤寒暄}"
   else
     echo "$PROMPT_BASE"
   fi
 }
+
 if [ "${1:-}" = "--dry-run" ]; then
-  printf 'provider=%s\nmodel=%s\nvault=%s\nfiles:\n%s\n' "$PROVIDER" "$MODEL" "$VAULT" "$MANIFEST"
+  printf 'provider=%s\nmodel=%s\nmanifest_limit=%s\nvision=%s\ntool_use=%s\nmultilingual=%s\nvault=%s\nfiles:\n%s\n' "$PROVIDER" "$MODEL" "$MANIFEST_LIMIT" "$(echo "$VISION_PROVIDERS" | tr ',' '\n' | grep -qx "$PROVIDER" && echo yes || echo no)" "$(echo "$TOOL_USE_PROVIDERS" | tr ',' '\n' | grep -qx "$PROVIDER" && echo yes || echo no)" "$(echo "$MULTILINGUAL_PROVIDERS" | tr ',' '\n' | grep -qx "$PROVIDER" && echo yes || echo no)" "$VAULT" "$MANIFEST"
   exit 0
 fi
 # fallback 链：主 provider 失败时依次降级，避免额度耗尽导致蒸馏中断
-# 从 .env 配置（FALLBACK_PROVIDERS_CSV / FALLBACK_MODELS_CSV，逗号分隔），默认空（不降级）
 FALLBACK_PROVIDERS=()
 FALLBACK_MODELS=()
 if [ -n "${FALLBACK_PROVIDERS_CSV:-}" ]; then
@@ -106,7 +134,6 @@ if [ -n "${FALLBACK_PROVIDERS_CSV:-}" ]; then
   if [ -n "${FALLBACK_MODELS_CSV:-}" ]; then
     IFS=',' read -ra FALLBACK_MODELS <<< "$FALLBACK_MODELS_CSV"
   fi
-  # 模型数少于 provider 数时，用空串补位（运行时由 hermes 决定默认模型）
   while [ "${#FALLBACK_MODELS[@]}" -lt "${#FALLBACK_PROVIDERS[@]}" ]; do
     FALLBACK_MODELS+=("")
   done
@@ -115,7 +142,6 @@ fi
 run_distill() {
   local prov="$1" model="$2"
   local out_file="/tmp/distill_output_$$.log"
-  # hermes CLI 解析：PATH 找不到时回退常见安装位置（真实环境可能不在 PATH）
   local hbin="${HERMES_BIN:-}"
   if [ -z "$hbin" ]; then
     if command -v hermes >/dev/null 2>&1; then
@@ -132,20 +158,17 @@ run_distill() {
   prompt=$(build_prompt "$prov")
   "$hbin" chat --provider "$prov" -m "$model" -s ai-chat-unified-distill \
     -t file,terminal --in "$VAULT" --max-turns "${AI_DISTILL_MAX_TURNS:-80}" \
-    --accept-hooks -Q -q "$PROMPT" > "$out_file" 2>&1
+    --accept-hooks -Q -q "$prompt" > "$out_file" 2>&1
   local rc=$?
   local failed=0
-  # hermes chat 失败时退出码可能仍为 0，用输出内容检测失败
   if grep -qiE "^API call failed after|^No API key found|^No usable credentials|^HTTP [45][0-9][0-9]" "$out_file"; then
     failed=1
   fi
-  # 空输出或只有 session_id 也是失败
   local lines
   lines=$(wc -l < "$out_file" 2>/dev/null || echo 0)
   if [ "$lines" -le 2 ]; then
     failed=1
   fi
-  # 输出失败摘要到 stderr 供 journalctl 记录
   if [ "$failed" -eq 1 ]; then
     echo "❌ $prov/$model 失败:" >&2
     grep -iE "^API call failed after|^No API key found|^No usable credentials|^HTTP [45][0-9][0-9]" "$out_file" | head -3 >&2
@@ -176,8 +199,6 @@ if [ "$RC" -ne 0 ]; then
 fi
 set -e
 if [ "$RC" -eq 0 ]; then
-  # 增量更新 state：只标记「本轮实际蒸馏的 MANIFEST 文件」。
-  # 被 500 上限截断的文件保持旧状态 → 下一轮自动重新出现（天然 retry，不丢文件）。
   python3 - "$VAULT" "$STATE_FILE" "$MANIFEST" <<'PY'
 import json, sys
 from datetime import datetime
