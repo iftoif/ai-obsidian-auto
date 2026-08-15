@@ -34,8 +34,12 @@ jobs:
         run: bash tests/smoke.sh
       - name: L4 安全矩阵
         run: bash tests/security/test_security_matrix.sh
-      - name: L5 变异验证（kill rate 100%）
-        run: python3 tests/mutation.py
+      - name: L5 变异验证（Python + bash，kill rate 100%）
+        run: |
+          python3 tests/mutation.py
+          bash tests/mutation_bash.sh
+      - name: L0b 一致性检查（QA-PLAN §7 七项）
+        run: bash tests/consistency.sh
       - name: 一致性检查（占位符/敏感信息，-E 修复 BRE 死检查）
         run: |
           set -e

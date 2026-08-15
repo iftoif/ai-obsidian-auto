@@ -30,6 +30,14 @@ else
 fi
 if python3 -m py_compile scripts/*.py 2>/dev/null; then ok "py_compile 通过"; else bad "py_compile 失败"; fi
 
+# ── L0b 一致性检查（QA-PLAN §7）──
+section "L0b 一致性检查（QA-PLAN §7）"
+if bash tests/consistency.sh >/tmp/runall-cons.log 2>&1; then
+  ok "一致性: $(grep -oE '[0-9]+ 通过 / [0-9]+ 失败' /tmp/runall-cons.log | tail -1)"
+else
+  bad "一致性检查失败"; tail -8 /tmp/runall-cons.log
+fi
+
 # ── L1 单元测试 ──
 section "L1 单元测试（pytest + bats）"
 if python3 -m pytest tests/unit/ -q >/tmp/runall-pytest.log 2>&1; then
@@ -81,6 +89,14 @@ if python3 tests/mutation.py >/tmp/runall-mut.log 2>&1; then
   ok "变异: $(grep -oE '[0-9]+ killed' /tmp/runall-mut.log | tail -1)"
 else
   bad "变异验证失败"; tail -8 /tmp/runall-mut.log
+fi
+
+# ── L5b bash 变异验证（QA-PLAN §8）──
+section "L5b bash 变异验证"
+if bash tests/mutation_bash.sh >/tmp/runall-mutb.log 2>&1; then
+  ok "bash 变异: $(grep -oE '[0-9]+ killed' /tmp/runall-mutb.log | tail -1)"
+else
+  bad "bash 变异验证失败"; tail -8 /tmp/runall-mutb.log
 fi
 
 # ── 汇总 ──

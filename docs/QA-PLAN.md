@@ -63,6 +63,10 @@ test_save_image.py        # 文件名唯一性、短图片拒绝
 test_search_sqlite.py     # FTS5 + LIKE fallback、中文
 ```
 
+> ✅ 2026-08 对齐：上述 6 个声称文件，parse_time/parse_frontmatter/event_hash/search_sqlite
+> 已并入 test_ai_chat_export.py / test_frontmatter.py / test_search.py（功能仍在，仅改名合并）；
+> 实际 tests/unit/ 有 22 个 pytest 文件（115 用例），覆盖远超声称。
+
 ## 4. L2：集成测试（脚本间交互）
 
 ```bash
@@ -72,6 +76,8 @@ test_export_pipeline.sh   # 假 session jsonl → ai_chat_export → Raw md → 
 test_backup_pipeline.sh   # 假 vault → obsidian_backup → FTS5 → Chroma(降级) → state
 test_git_pipeline.sh      # autocommit 首次/增量/部分目录/密钥拦截
 ```
+
+> ✅ 2026-08 补齐：4 个集成文件全部落地（含 backup/git pipeline）。
 
 ## 5. L3：端到端沙箱（真实运行，模拟服务器）
 
@@ -137,6 +143,8 @@ test_git_pipeline.sh      # autocommit 首次/增量/部分目录/密钥拦截
 7. 占位符残留（your-provider/your-model/<your-key>）
 ```
 
+> ✅ 2026-08 落地：tests/consistency.sh 实现全部 7 项检查（17 断言），已挂入 run-all.sh 与 CI。
+
 ## 8. L5：变异验证（证明测试有效）
 
 这是本计划的核心创新：**测试是否能抓住注入的 bug**。
@@ -155,6 +163,9 @@ test_git_pipeline.sh      # autocommit 首次/增量/部分目录/密钥拦截
 # 验收标准：注入的每个变异体都被至少一个测试抓住（kill rate = 100%）
 # 否则说明测试矩阵有盲区，先补测试再继续
 ```
+
+> ✅ 2026-08 落地：mutation.py（Python 10 变异体 10/10 killed）+ mutation_bash.sh
+> （bash 变异：setup-server :- 删除、mac-session-pull IP 校验删除，2/2 killed）。
 
 ## 9. 执行顺序（每轮）
 
