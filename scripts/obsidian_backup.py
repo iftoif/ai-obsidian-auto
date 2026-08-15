@@ -476,11 +476,19 @@ def _get_chroma():
         _chroma_collection = _chroma_client.get_collection("obsidian_notes")
     except Exception:
         # collection 不存在，创建它
-        _chroma_collection = _chroma_client.create_collection(
-            name="obsidian_notes",
-            metadata={"hnsw:space": "cosine"},
-            embedding_function=_get_embedding_function(),
-        )
+        try:
+            _chroma_collection = _chroma_client.create_collection(
+                name="obsidian_notes",
+                metadata={"hnsw:space": "cosine"},
+                embedding_function=_get_embedding_function(),
+            )
+        except Exception as e:
+            # 创建失败（embedding 函数/磁盘问题）：降级为无 Chroma 索引，
+            # 不让向量库问题炸掉整个备份（SQLite 备份仍继续）
+            print(f"  [chroma] ⚠️  collection 创建失败，降级跳过 Chroma: {e}", file=sys.stderr)
+            _chroma_client = None
+            _chroma_collection = None
+            return None
     return _chroma_collection
 
 
