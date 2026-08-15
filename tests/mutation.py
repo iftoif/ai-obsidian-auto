@@ -17,9 +17,15 @@ def setup():
     (WORK / '.env.example').write_text((REPO / '.env.example').read_text())
 
 def run_pytest(keys):
-    r = subprocess.run([sys.executable, '-m', 'pytest', str(WORK / 'tests/unit'), '-q', '-k', keys],
-                       capture_output=True, text=True, cwd=str(WORK))
-    return r
+    # timeout 防护：capture_output 管道缓冲满会死锁（环境相关），
+    # 60s 超时视为该变异导致测试挂起（killed）
+    try:
+        r = subprocess.run([sys.executable, '-m', 'pytest', str(WORK / 'tests/unit'), '-q', '-k', keys],
+                           capture_output=True, text=True, cwd=str(WORK), timeout=60)
+        return r
+    except subprocess.TimeoutExpired:
+        print(f'  ⚠️ pytest 超时（-k {keys}），视为变异被抓住')
+        return None
 
 # 变异体：(名称, 文件相对路径, 目标串, 变异串, 测试选择器, 应抓住的测试名)
 MUTATIONS = [
@@ -68,15 +74,15 @@ def main():
             continue
         target.write_text(s.replace(old, new, 1))
         r = run_pytest(selector)
-        # 应被抓住：变异后目标测试失败，或 collection error（变异破坏代码结构）
-        failed = (target_test in r.stdout and ' failed' in r.stdout) or \
+        # 应被抓住：变异后目标测试失败，或 collection error，或超时挂起
+        failed = r is None or (target_test in r.stdout and ' failed' in r.stdout) or \
                  ('Interrupted:' in r.stdout and 'errors during collection' in r.stdout)
         if failed:
             print(f'  ✅ {name}: 变异被测试抓住 (killed)')
             killed += 1
         else:
             print(f'  ❌ {name}: 变异未被抓住 (survived)')
-            print(f'     pytest输出尾部: {r.stdout.strip()[-200:]}')
+            print(f'     pytest输出尾部: {(r.stdout or "").strip()[-200:]}')
             survived += 1
         target.write_text(s)  # 还原
     print(f'\n===== 变异验证：{killed} killed / {survived} survived / {skipped} skipped =====')

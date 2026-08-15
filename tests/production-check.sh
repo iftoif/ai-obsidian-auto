@@ -24,9 +24,11 @@ done
 # ── 2. crontab 导出调度存在 ──
 section "2. crontab 导出调度"
 CRON=$(crontab -l 2>/dev/null || true)
-if echo "$CRON" | grep -q 'ai_chat_export_cron.sh'; then ok "ai_chat_export cron"; else bad "ai_chat_export cron 缺失"; fi
-if echo "$CRON" | grep -q 'chat_export_cron.sh'; then ok "chat_export cron"; else bad "chat_export cron 缺失"; fi
-if echo "$CRON" | grep -q 'codex_chat_export_cron.sh'; then ok "codex_export cron"; else bad "codex_export cron 缺失"; fi
+# 用路径段精确匹配：避免 chat_export_cron.sh 与 ai_chat_export_cron.sh /
+# codex_chat_export_cron.sh 的子串重叠（一条含全部子串的行会让三查全过）
+if echo "$CRON" | grep -q '/ai_chat_export_cron.sh'; then ok "ai_chat_export cron"; else bad "ai_chat_export cron 缺失"; fi
+if echo "$CRON" | grep -q '/chat_export_cron.sh'; then ok "chat_export cron"; else bad "chat_export cron 缺失"; fi
+if echo "$CRON" | grep -q '/codex_chat_export_cron.sh'; then ok "codex_export cron"; else bad "codex_export cron 缺失"; fi
 
 # ── 3. 已部署修复的回归断言 ──
 section "3. 已部署修复回归（2026-08-15 QA 移植）"
@@ -49,7 +51,7 @@ if python3 -c "import sys; sys.path.insert(0, '$SCRIPTS'); import obsidian_backu
 else
   bad "obsidian_backup: Chroma 前缀断言失败！"
 fi
-# LIKE fallback 存在即可（公开版无 ESCAPE / 服务器增强版带 ESCAPE 通配符转义）
+# LIKE fallback 存在即可（仓库版与服务器版均带 ESCAPE 通配符转义）
 if grep -qE 'LIKE ? OR title LIKE|content LIKE ?' "$SCRIPTS/obsidian_backup.py"; then
   ok "obsidian_backup: 中文 LIKE fallback 存在"
 else
