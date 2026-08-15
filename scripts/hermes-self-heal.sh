@@ -98,19 +98,36 @@ for svc in $GATEWAY_SERVICES; do
 done
 
 # 5. 重载 + 重启 gateway
+# fail-loudly：重启失败必须报出来（原来 `|| true` 会让「网关没起来」
+# 被记成 ✅，自愈脚本本身变成谎报）
+HEAL_FAILED=0
 if [ "$changed" -eq 1 ]; then
-  systemctl --user daemon-reload
+  systemctl --user daemon-reload || { echo "❌ daemon-reload 失败"; HEAL_FAILED=1; }
   for svc in $GATEWAY_SERVICES; do
-    systemctl --user restart "$svc" 2>/dev/null || true
+    if systemctl --user restart "$svc" 2>&1; then
+      echo "✅ $svc 已重启"
+    else
+      echo "❌ $svc 重启失败（请查 systemctl --user status $svc）"
+      HEAL_FAILED=1
+    fi
   done
-  echo "✅ systemd 已重载，gateway 已重启"
 fi
 
 # 6. 重跑 hermes_patch.py（恢复所有 patch）
 PATCH="$HERMES_HOME/scripts/hermes_patch.py"
 if [ -f "$PATCH" ] && [ -x "$NEW_PY" ]; then
   "$NEW_PY" "$PATCH" 2>&1 | tail -3
-  echo "✅ hermes_patch.py 已重跑"
+  PATCH_RC=${PIPESTATUS[0]}
+  if [ "$PATCH_RC" -eq 0 ]; then
+    echo "✅ hermes_patch.py 已重跑"
+  else
+    echo "❌ hermes_patch.py 重跑失败（exit $PATCH_RC）——patch 未恢复"
+    HEAL_FAILED=1
+  fi
 fi
 
+if [ "$HEAL_FAILED" -gt 0 ]; then
+  echo "=== self-heal 完成（有失败项）$(date '+%Y-%m-%d %H:%M:%S') ==="
+  exit 1
+fi
 echo "=== self-heal 完成 $(date '+%Y-%m-%d %H:%M:%S') ==="

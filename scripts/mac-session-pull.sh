@@ -29,6 +29,31 @@ mkdir -p "$(dirname "$LOG")" "$HOME/.claude/projects" "$HOME/.codex/sessions" "$
 exec >>"$LOG" 2>&1
 echo "=== mac-session-pull $(date +%F_%T) ==="
 
+# 失败计数：任一节点任一客户端拉取失败都记账，脚本最终以非零退出
+# （否则 rsync 失败被管道吞掉，日志显示 ✅、timer 绿，数据其实没同步）
+PULL_FAILED=0
+
+# rsync 的 ssh 也要带超时：探测阶段的 ConnectTimeout 不会传递给 rsync 的
+# ssh 子进程，半开连接可阻塞数小时
+RSYNC_SSH="ssh -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -o BatchMode=yes"
+
+# 单目录拉取：远端存在才拉，失败 fail-loudly 并记账
+# exit 24（源文件传输中消失）在活跃会话目录属常见良性情况，放行
+pull_dir() {
+  local user="$1" ip="$2" label="$3" remote="$4" local_dir="$5"
+  if ! ssh -o ConnectTimeout=8 -o BatchMode=yes "$user@$ip" "test -d $remote" 2>/dev/null; then
+    return 0
+  fi
+  rsync -avz -e "$RSYNC_SSH" "$user@$ip:$remote/" "$local_dir/" 2>&1 | tail -1
+  local rc=${PIPESTATUS[0]}
+  if [ "$rc" -eq 0 ] || [ "$rc" -eq 24 ]; then
+    echo "  ✅ $label 会话已拉取"
+  else
+    echo "  ❌ $label 会话拉取失败（rsync exit $rc）"
+    PULL_FAILED=$((PULL_FAILED + 1))
+  fi
+}
+
 # 拉取函数：ssh user@ip 拉取 Claude/Codex/Pi/DSH 会话
 pull_node() {
   local user="$1" ip="$2" host="$3"
@@ -38,22 +63,10 @@ pull_node() {
     return
   fi
   # 检测各会话目录是否存在（避免 rsync error 23）
-  if ssh -o BatchMode=yes "$user@$ip" "test -d ~/.claude/projects" 2>/dev/null; then
-    rsync -avz "$user@$ip:~/.claude/projects/" "$HOME/.claude/projects/" 2>&1 | tail -1
-    echo "  ✅ Claude 会话已拉取"
-  fi
-  if ssh -o BatchMode=yes "$user@$ip" "test -d ~/.codex/sessions" 2>/dev/null; then
-    rsync -avz "$user@$ip:~/.codex/sessions/" "$HOME/.codex/sessions/" 2>&1 | tail -1
-    echo "  ✅ Codex 会话已拉取"
-  fi
-  if ssh -o BatchMode=yes "$user@$ip" "test -d ~/.pi/agent/sessions" 2>/dev/null; then
-    rsync -avz "$user@$ip:~/.pi/agent/sessions/" "$HOME/.pi/agent/sessions/" 2>&1 | tail -1
-    echo "  ✅ Pi 会话已拉取"
-  fi
-  if ssh -o BatchMode=yes "$user@$ip" "test -d ~/.dsh/sessions" 2>/dev/null; then
-    rsync -avz "$user@$ip:~/.dsh/sessions/" "$HOME/.dsh/sessions/" 2>&1 | tail -1
-    echo "  ✅ DSH 会话已拉取"
-  fi
+  pull_dir "$user" "$ip" "Claude" "~/.claude/projects" "$HOME/.claude/projects"
+  pull_dir "$user" "$ip" "Codex"  "~/.codex/sessions"  "$HOME/.codex/sessions"
+  pull_dir "$user" "$ip" "Pi"     "~/.pi/agent/sessions" "$HOME/.pi/agent/sessions"
+  pull_dir "$user" "$ip" "DSH"    "~/.dsh/sessions"    "$HOME/.dsh/sessions"
 }
 
 # 1. 主 Mac（固定，当前架构核心工作机；连接信息由环境变量注入）
@@ -96,4 +109,10 @@ PYEOF
   done
 fi
 
+# fail-loudly：有任何客户端目录拉取失败则非零退出（systemd 会标记 failed，
+# 便于 journalctl / production-check 发现，而不是静默假成功）
+if [ "$PULL_FAILED" -gt 0 ]; then
+  echo "=== 拉取完成（有 $PULL_FAILED 项失败）$(date +%F_%T) ==="
+  exit 1
+fi
 echo "=== 拉取完成 $(date +%F_%T) ==="

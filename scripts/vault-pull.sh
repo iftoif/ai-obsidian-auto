@@ -45,9 +45,21 @@ fi
 # 远程路径含空格（Mobile Documents）：单引号包裹路径整体传给远程 shell。
 # 不用 --protect-args：远端 rsync 版本较老（macOS 自带 2.6.9）时 -s
 # 会协议错误（实测 rsync 3.4.1 + 老远端 connection closed）
-rsync -avz --exclude=".obsidian/workspace.json" --exclude=".trash/" \
+# -e ssh：给 rsync 自己的 ssh 连接也带上超时（探测阶段的 ConnectTimeout
+# 不会传递给 rsync 的 ssh 子进程，半开连接会阻塞数小时）
+rsync -avz -e "ssh -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -o BatchMode=yes" \
+  --exclude=".obsidian/workspace.json" --exclude=".trash/" \
   "$MAC:'$MAC_VAULT'" \
   "$SERVER_VAULT/" 2>&1 | tail -5
-echo "✅ iCloud Vault 已拉取到服务器"
+RSYNC_RC=${PIPESTATUS[0]}
+# fail-loudly：rsync 失败必须报错退出，不能无条件打 ✅（否则数据未同步
+# 而日志显示成功、timer 绿、健康检查也发现不了）。
+# exit 24（源文件传输中消失）是 iCloud 活动目录的常见良性情况，放行。
+if [ "$RSYNC_RC" -eq 0 ] || [ "$RSYNC_RC" -eq 24 ]; then
+  echo "✅ iCloud Vault 已拉取到服务器"
+else
+  echo "❌ rsync 拉取失败（exit $RSYNC_RC）——Vault 未同步，请检查主 Mac 磁盘/权限/网络"
+  exit 1
+fi
 
 echo "=== 完成 $(date +%F_%T) ==="

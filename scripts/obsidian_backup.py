@@ -47,6 +47,7 @@ CHROMA_PATH = DATA_DIR / "chroma_db"
 # them searchable in SQLite FTS5 but skip/limit vector indexing by default.
 CHROMA_MAX_RAW_BYTES = int(os.environ.get("OBSIDIAN_CHROMA_MAX_RAW_BYTES", "250000"))
 CHROMA_SKIP_RAW_CHAT_LOGS = os.environ.get("OBSIDIAN_CHROMA_SKIP_RAW_CHAT_LOGS", "1") != "0"
+QUIET = False  # 模块级：cmd_backup 设置，chroma 函数打印感知
 CHROMA_PRIORITY_PREFIXES = ("Wiki/", "Context/", "Hermes/Lessons/", "Codex/Lessons/", "Shared/Lessons/", "Skills/")
 CHROMA_RAW_CHAT_PREFIXES = (
     "Hermes/Chat Logs/", "Codex/Chat Logs/", "Claude/Chat Logs/",
@@ -486,7 +487,8 @@ def _get_chroma():
 def upsert_note_chroma(note: Note):
     if not note.should_index_chroma():
         delete_note_chroma(note.rel_path)
-        print(f"  [chroma] ⏭️  skipped raw/large note: {note.rel_path}", file=sys.stderr)
+        if not QUIET:
+            print(f"  [chroma] ⏭️  skipped raw/large note: {note.rel_path}", file=sys.stderr)
         return
 
     col = _get_chroma()
@@ -508,9 +510,11 @@ def upsert_note_chroma(note: Note):
             documents=[text],
             metadatas=[metadata],
         )
-        print(f"  [chroma] ✅ upsert: {note.rel_path}", file=sys.stderr)
+        if not QUIET:
+            print(f"  [chroma] ✅ upsert: {note.rel_path}", file=sys.stderr)
     except Exception as e:
-        print(f"  [chroma] ⚠️  error upserting {note.rel_path}: {e}", file=sys.stderr)
+        if not QUIET:
+            print(f"  [chroma] ⚠️  error upserting {note.rel_path}: {e}", file=sys.stderr)
 
 
 def delete_note_chroma(path: str):
@@ -519,7 +523,8 @@ def delete_note_chroma(path: str):
         return
     try:
         col.delete(ids=[path])
-        print(f"  [chroma] 🗑️  deleted: {path}", file=sys.stderr)
+        if not QUIET:
+            print(f"  [chroma] 🗑️  deleted: {path}", file=sys.stderr)
     except Exception:
         pass
 
@@ -551,6 +556,8 @@ def search_chroma(query: str, limit: int = 10) -> list[dict]:
 
 def cmd_backup(full: bool = False, quiet: bool = False):
     """执行增量或全量备份"""
+    global QUIET
+    QUIET = quiet
     if not VAULT_PATH.exists():
         print(f"❌ Obsidian vault 不存在: {VAULT_PATH}", file=sys.stderr)
         sys.exit(1)
