@@ -11,6 +11,8 @@ fi
 VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/obsidian}"
 PROVIDER="${AI_DISTILL_PROVIDER:-openai-codex}"
 MODEL="${AI_DISTILL_MODEL:-gpt-5.6-luna}"
+# 支持 vision（图片理解）的 provider 列表；不在列表内的 provider 蒸馏时去掉 vision 指令
+VISION_PROVIDERS="${AI_DISTILL_VISION_PROVIDERS:-openai-codex,glm-4v,glm-4v-flash,gemini,gpt-4o}"
 # 加载 secret store（提供 fallback provider 的 API key，如 deepseek/kimi）
 SECRET_ENV="${HOME}/.config/hermes/secret-store/hermes.env"
 if [ -f "$SECRET_ENV" ]; then
@@ -63,7 +65,6 @@ vault 根目录: $VAULT
 $MANIFEST
 
 先读 CLAUDE.md、Wiki/AGENTS.md、Wiki/Index.md。Raw 原文只读，不修改、不删除、不移动。
-日志中的 ![[assets/...]] 图片引用，请用 vision 读取图片内容并纳入蒸馏（图表、截图中的关键信息要总结成文字）。
 过滤寒暄、测试、重复工具输出、失败调试过程，只保留最终结论、已验证配置、决策、踩坑、可复用经验和失败边界。
 创建或更新 Wiki/Sources/日期-AI-聊天记录摘要.md；按工具写入对应 Lessons，跨工具内容写 Shared/Lessons；已有主题增量合并去重，不重复建页。
 遇到新旧结论冲突或发现旧内容错误/过时时，不直接覆盖旧结论：并列保留新旧说法，各自标注来源、时间、适用范围，并写明旧结论的失效原因（哪条信息变了导致它不再成立）。当前正确结论放在最前，旧结论标注「已失效」放后面。
@@ -79,6 +80,19 @@ Obsidian 语法规范（按官方 obsidian-markdown 惯例）：
 完成后汇报：读取文件、新建/更新页面、关键结论、待核实事项。
 EOF
 )
+# vision 指令按 provider 能力动态注入（无 vision 的 provider 去掉该指令）
+VISION_INSTRUCTION="日志中的 ![[assets/...]] 图片引用，请用 vision 读取图片内容并纳入蒸馏（图表、截图中的关键信息要总结成文字）。
+
+"
+build_prompt() {
+  local prov="$1"
+  if echo "$VISION_PROVIDERS" | tr "," "
+" | grep -qx "$prov"; then
+    echo "${PROMPT_BASE/过滤寒暄/$VISION_INSTRUCTION过滤寒暄}"
+  else
+    echo "$PROMPT_BASE"
+  fi
+}
 if [ "${1:-}" = "--dry-run" ]; then
   printf 'provider=%s\nmodel=%s\nvault=%s\nfiles:\n%s\n' "$PROVIDER" "$MODEL" "$VAULT" "$MANIFEST"
   exit 0
@@ -114,6 +128,8 @@ run_distill() {
     echo "❌ 找不到 hermes CLI（PATH 中无 hermes，且未设置 HERMES_BIN）" >&2
     return 1
   fi
+  local prompt
+  prompt=$(build_prompt "$prov")
   "$hbin" chat --provider "$prov" -m "$model" -s ai-chat-unified-distill \
     -t file,terminal --in "$VAULT" --max-turns "${AI_DISTILL_MAX_TURNS:-80}" \
     --accept-hooks -Q -q "$PROMPT" > "$out_file" 2>&1
