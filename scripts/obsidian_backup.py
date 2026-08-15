@@ -471,7 +471,15 @@ def _get_chroma():
         print("  [chromadb] NOT INSTALLED — pip install chromadb", file=sys.stderr)
         return None
 
-    _chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
+    try:
+        _chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
+    except Exception as e:
+        # 初始化失败（磁盘只读/目录不可写/chroma_db 损坏）：降级为无
+        # Chroma 索引，不让向量库问题炸掉整个备份（SQLite 备份仍继续）
+        print(f"  [chroma] ⚠️  PersistentClient 初始化失败，降级跳过 Chroma: {e}", file=sys.stderr)
+        _chroma_client = None
+        _chroma_collection = None
+        return None
     try:
         _chroma_collection = _chroma_client.get_collection("obsidian_notes")
     except Exception:
