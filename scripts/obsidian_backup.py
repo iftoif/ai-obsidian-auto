@@ -743,6 +743,18 @@ def cmd_search(query: str, semantic: bool = False, limit: int = 10):
 # ── CLI 入口 ──────────────────────────────────────────
 
 def main():
+    # 单实例锁：防止并发备份（timer + 手动同时跑）内存叠加 OOM。
+    # flock 在进程退出时自动释放，不会残留
+    import fcntl
+    lock_path = str(DATA_DIR / "obsidian_backup.lock")
+    os.makedirs(DATA_DIR, exist_ok=True)
+    _lock_fh = open(lock_path, "w")
+    try:
+        fcntl.flock(_lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print(f"⚠️ 另一个 obsidian_backup 正在运行（{lock_path} 被锁），跳过本次", file=sys.stderr)
+        return 0
+
     parser = argparse.ArgumentParser(
         description="Obsidian Vault 增量双备份管道 (SQLite FTS5 + ChromaDB)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -772,6 +784,8 @@ def main():
     else:
         cmd_backup(full=args.full, quiet=args.quiet)
 
+    fcntl.flock(_lock_fh, fcntl.LOCK_UN)
+    _lock_fh.close()
     return 0
 
 
