@@ -1,11 +1,14 @@
 ---
 title: {{title}}
 type: topic
+cssclasses:
+  - topic
+  - wiki
 tags:
   - topic
 sources: []
-created: {{date}}
-updated: {{date}}
+created: {{date:YYYY-MM-DD}}
+updated: {{date:YYYY-MM-DD}}
 ---
 
 # {{title}}

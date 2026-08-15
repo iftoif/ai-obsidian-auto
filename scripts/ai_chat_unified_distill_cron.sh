@@ -69,6 +69,13 @@ $MANIFEST
 遇到新旧结论冲突或发现旧内容错误/过时时，不直接覆盖旧结论：并列保留新旧说法，各自标注来源、时间、适用范围，并写明旧结论的失效原因（哪条信息变了导致它不再成立）。当前正确结论放在最前，旧结论标注「已失效」放后面。
 必要时更新 Wiki/Concepts、Entities、Topics、各 Index、Wiki/Log.md。所有事实标注来源，中文输出，敏感信息脱敏。不要修改 CLAUDE.md 和 Wiki/AGENTS.md。
 
+Obsidian 语法规范（按官方 obsidian-markdown 惯例）：
+- 「风险 / 边界」「踩坑」「警告」区块用 > [!warning] callout；「待核实」「待确认」用 > [!question] callout；重要结论用 > [!tip] callout
+- 半成品/占位信息用 %%注释%% 包裹（阅读视图隐藏，不删内容）
+- 内部链接一律用 [[wikilink]]，外部 URL 用 [text](url)
+- 日期一律 YYYY-MM-DD 格式；frontmatter 的 aliases 填实际别名（如英文名、缩写），不要留空数组
+- 段落级引用用 ^block-id 锚点（精确引用结论时）
+
 完成后汇报：读取文件、新建/更新页面、关键结论、待核实事项。
 EOF
 )

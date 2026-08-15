@@ -1,8 +1,11 @@
 ---
 source: shared
 type: lesson
+cssclasses:
+  - lesson
+  - wiki
 topic: {{topic}}
-created: {{date}}
+created: {{date:YYYY-MM-DD}}
 tags:
   - shared
   - lesson

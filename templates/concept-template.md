@@ -1,12 +1,15 @@
 ---
 title: {{title}}
 type: concept
-aliases: []
+cssclasses:
+  - concept
+  - wiki
+aliases: []  # 蒸馏时填实际别名，勿留空
 tags:
   - concept
 sources: []
-created: {{date}}
-updated: {{date}}
+created: {{date:YYYY-MM-DD}}
+updated: {{date:YYYY-MM-DD}}
 ---
 
 # {{title}}

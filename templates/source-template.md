@@ -1,7 +1,10 @@
 ---
 title: {{title}}
 type: source
-date: {{date}}
+cssclasses:
+  - source
+  - wiki
+date: {{date:YYYY-MM-DD}}
 tags:
   - source
 ---

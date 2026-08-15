@@ -1,13 +1,16 @@
 ---
 title: {{title}}
 type: entity
+cssclasses:
+  - entity
+  - wiki
 entity_type: tool
-aliases: []
+aliases: []  # 蒸馏时填实际别名，勿留空
 tags:
   - entity
 sources: []
-created: {{date}}
-updated: {{date}}
+created: {{date:YYYY-MM-DD}}
+updated: {{date:YYYY-MM-DD}}
 ---
 
 # {{title}}
