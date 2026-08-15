@@ -49,8 +49,8 @@ PRIMARY_MAC_IP=192.168.x.x        # ← 你 Mac 的局域网 IP（Mac 上「系�
 SSH_USER=yourname                 # ← 你 Mac 的登录用户名（终端里 whoami 能看到）
 MAC_USER=yourname                  # ← 同上（Mac 本地用户名，一般一样）
 OBSIDIAN_VAULT_PATH=$HOME/obsidian # ← 知识库存服务器哪里（默认就行）
-AI_DISTILL_PROVIDER=your-provider # ← 你的蒸馏 LLM provider
-AI_DISTILL_MODEL=your-model       # ← 模型名
+AI_DISTILL_PROVIDER=openai-codex # ← 你的蒸馏 LLM provider（ChatGPT 订阅；也支持 deepseek/kimi 等）
+AI_DISTILL_MODEL=gpt-5.6-luna     # ← 模型名（与 .env.example 一致）
 DEEPSEEK_API_KEY=sk-xxxx           # ← 你的 API key（fallback 链用）
 ```
 

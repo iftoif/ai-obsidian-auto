@@ -82,7 +82,7 @@
 ### Provider 降级链
 
 ```text
-主：your-provider / your-model
+主：openai-codex / gpt-5.6-luna（默认，.env 可改）
 降级：fallback 链（如 deepseek → kimi）
 失败检测：基于输出内容（hermes chat 失败退出码可能为 0）
 ```
