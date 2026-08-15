@@ -24,11 +24,15 @@ done
 # ── 2. crontab 导出调度存在 ──
 section "2. crontab 导出调度"
 CRON=$(crontab -l 2>/dev/null || true)
+# 导出调度检查：兼容两种部署形态——旧三脚本（手工部署）或 export-all.sh
+# （setup-server 一键部署）。任一存在即视为已配置，避免一键部署服务器假红。
 # 用路径段精确匹配：避免 chat_export_cron.sh 与 ai_chat_export_cron.sh /
 # codex_chat_export_cron.sh 的子串重叠（一条含全部子串的行会让三查全过）
-if echo "$CRON" | grep -q '/ai_chat_export_cron.sh'; then ok "ai_chat_export cron"; else bad "ai_chat_export cron 缺失"; fi
-if echo "$CRON" | grep -q '/chat_export_cron.sh'; then ok "chat_export cron"; else bad "chat_export cron 缺失"; fi
-if echo "$CRON" | grep -q '/codex_chat_export_cron.sh'; then ok "codex_export cron"; else bad "codex_export cron 缺失"; fi
+if echo "$CRON" | grep -qE '/(ai_chat_export_cron|chat_export_cron|codex_chat_export_cron|export-all).sh'; then
+  ok "导出 cron 已配置（$(echo "$CRON" | grep -oE '/(ai_chat_export_cron|chat_export_cron|codex_chat_export_cron|export-all).sh' | tr -d '/' | tr '\n' ' ')）"
+else
+  bad "导出 cron 缺失（旧三脚本与 export-all.sh 均不在 crontab）"
+fi
 
 # ── 3. 已部署修复的回归断言 ──
 section "3. 已部署修复回归（2026-08-15 QA 移植）"
@@ -93,7 +97,8 @@ done
 section "5. 最近 30 分钟服务错误"
 # 排除桌面索引噪音（localsearch/Tracker 扫 obsidian 路径的假图片会产生
 # 'Could not get any metadata' error——与系统运行无关，纯误报源）
-ERR=$(journalctl --user --since '30 min ago' --no-pager 2>/dev/null | grep -E 'obsidian.*(error|Traceback|Failed)' | grep -vE 'localsearch|Tracker' | wc -l | tr -d ' ')
+# -i：大小写不敏感（LOCALSEARCH/tracker 等变体也滤掉）
+ERR=$(journalctl --user --since '30 min ago' --no-pager 2>/dev/null | grep -E 'obsidian.*(error|Traceback|Failed)' | grep -viE 'localsearch|tracker' | wc -l | tr -d ' ')
 if [ "$ERR" -eq 0 ]; then
   ok "journalctl 无 obsidian 相关错误（已排除桌面索引噪音）"
 else

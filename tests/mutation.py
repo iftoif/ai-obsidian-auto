@@ -17,8 +17,10 @@ def setup():
     (WORK / '.env.example').write_text((REPO / '.env.example').read_text())
 
 def run_pytest(keys):
-    # timeout 防护：capture_output 管道缓冲满会死锁（环境相关），
-    # 60s 超时视为该变异导致测试挂起（killed）
+    # timeout 防护：防御性兜底（慢环境/资源竞争下 pytest 可能异常慢），
+    # 60s 超时视为挂起并计为 killed。注：capture_output 内部走
+    # communicate() 并发读双管道，不存在管道缓冲死锁——此超时仅兜底
+    # 极端环境，正常情况变异体均秒级失败（见审阅核验）。
     try:
         r = subprocess.run([sys.executable, '-m', 'pytest', str(WORK / 'tests/unit'), '-q', '-k', keys],
                            capture_output=True, text=True, cwd=str(WORK), timeout=60)
