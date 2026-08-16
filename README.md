@@ -135,6 +135,9 @@ bash tests/smoke.sh
 - Hermes Gateway：7×24 接入微信/Telegram → 手机随时指挥 AI + 聊天自动沉淀 + 定时简报推送 + 系统事件通知
 - 微信 vs Telegram 选型、能做什么、踩坑 → 见 [docs/gateway.md](docs/gateway.md)
 
+> **⚠️ 重要**：Hermes 是「蒸馏」的运行时依赖，不只是消息网关。
+> 蒸馏脚本（`ai_chat_unified_distill_cron.sh`）通过 `hermes chat` 命令调用 LLM 提炼知识。**即使你不需要微信/Telegram，只要想启用「聊天自动蒸馏成知识」这个核心能力，也必须在服务器装好 Hermes Agent，并保证 `hermes` 在 PATH 中。**
+
 **AI 客户端（按你实际用的装，全部可选——用哪个装哪个，不用的不装）**
 
 > 核心原则：**没有哪个客户端是必须的**。系统按「目录存在才拉取」容错设计，你只装自己日常在用的工具即可；只装一个也能跑。
