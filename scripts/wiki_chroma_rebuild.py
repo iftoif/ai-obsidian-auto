@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild a focused ChromaDB index for Aaron's Obsidian LLM Wiki layer.
+"""Rebuild a focused ChromaDB index for the Obsidian LLM Wiki layer.
 
 Default input roots (relative to vault):
 - Wiki/

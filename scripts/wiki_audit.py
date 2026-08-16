@@ -82,7 +82,7 @@ def is_link_resolved(target, titles, rel_paths):
     return target in titles
 
 # ── OKM 中文新鲜度 lint（T4.1，轻量版）──
-# 上游 FRESH-1 依赖英文词汇，中文需定制。实测结论：Aaron vault 快事实密度低，
+# 上游 FRESH-1 依赖英文词汇，中文需定制。实测结论：本 vault 快事实密度低，
 # 采用「现在时标记 + 数字 + 快名词」组合，严格过滤完成态/规则/快照。
 
 CURRENT_ZH = ["目前", "当前", "现在", "至今", "截至", "现有", "尚未", "仍", "还剩"]
