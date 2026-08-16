@@ -113,10 +113,24 @@
 
 ## 5. 部署
 
+### 5.0 安装 Hermes Agent（前置）
+
+> Hermes 既是消息网关，也是蒸馏的运行时依赖。装好后 `hermes` 命令必须在 PATH 中。
+
+```bash
+# 方式一：官方安装（推荐）
+# 见 Hermes 官方仓库 https://github.com/NousResearch/hermes-agent 的安装说明
+# 安装完成后验证：
+which hermes && hermes --version
+
+# 方式二：若你的 fork/分发渠道提供了一键安装脚本，按它的说明执行
+```
+
+> 安装完成后，继续下面的网关配置；即使不用网关，蒸馏功能也需要 Hermes（见 quickstart.md 第 4.5 步）。
+
 ### 5.1 微信网关
 
 ```bash
-# 服务器上安装 Hermes 后
 # 为每个微信账号创建一个 profile
 hermes gateway add wechat --profile wechat2
 

@@ -71,8 +71,10 @@ mkdir -p ~/.claude/projects ~/.codex/sessions ~/.pi/agent/sessions ~/.dsh/sessio
 python3 -m venv ~/.hermes/obsidian-backup-env
 ~/.hermes/obsidian-backup-env/bin/pip install zstandard chromadb
 
-# Hermes（消息平台 + 蒸馏执行器，按需安装）
-# https://github.com/your-hermes-fork  # 本项目使用私有 Hermes Agent
+# Hermes Agent（蒸馏的运行时依赖 + 可选的消息网关）
+# ⚠️ 必装：蒸馏脚本通过 `hermes chat` 调用 LLM，没有 hermes 蒸馏跑不起来
+# 安装方式见 docs/gateway.md 或 Hermes 官方仓库（NousResearch/hermes-agent）
+# 装好后确认 `hermes` 在 PATH 中：which hermes
 ```
 
 ## 3. systemd timers（服务器）

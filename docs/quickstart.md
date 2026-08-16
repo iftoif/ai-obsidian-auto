@@ -90,6 +90,21 @@ chmod 600 ~/.ssh/authorized_keys
 ssh yourname@192.168.x.x "echo 连接成功"   # 不输密码就输出「连接成功」= 成了
 ```
 
+## 第 4.5 步：装 Hermes（蒸馏必需，10 分钟）
+
+> ⚠️ **跳过这步，蒸馏会静默失败**。蒸馏脚本通过 `hermes chat` 调用 LLM 提炼知识，`hermes` 命令必须存在。
+
+在服务器上安装 Hermes Agent（消息平台 + 蒸馏执行器）：
+
+```bash
+# 安装 Hermes（以官方仓库为例，或按 gateway.md 的说明装）
+# 装好后验证：
+which hermes
+hermes --version
+```
+
+> 详细安装步骤见 [gateway.md](gateway.md) 的「安装 Hermes」章节。如果你用微信/Telegram 网关，也是在这一步装好后配置。
+
 ## 第 5 步：跑部署脚本（5 分钟）
 
 回到服务器项目目录，跑一键部署：
