@@ -41,7 +41,6 @@ if ! ssh -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -
   exit 0
 fi
 
-# 拉取：主 Mac iCloud Vault → 服务器
 # 远程路径含空格（Mobile Documents）：单引号包裹路径整体传给远程 shell。
 # 不用 --protect-args：远端 rsync 版本较老（macOS 自带 2.6.9）时 -s
 # 会协议错误（实测 rsync 3.4.1 + 老远端 connection closed）

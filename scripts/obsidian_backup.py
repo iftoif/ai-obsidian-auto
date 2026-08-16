@@ -55,6 +55,11 @@ CHROMA_RAW_CHAT_PREFIXES = (
 )
 CHROMA_ENABLED = os.environ.get("OBSIDIAN_CHROMA_ENABLED", "1") != "0"
 
+# SQLite FTS5 也应跳过 Raw Chat Logs：Codex 首次导出产生 2000+ 巨型 md，
+# 全文索引把 FTS db 撑到 17G、内存峰值 15G+。Chat Logs 是 Raw 层，
+# 检索价值低（真正该搜的是 Wiki/Lessons/Context），默认跳过。
+SQLITE_SKIP_RAW_CHAT_LOGS = os.environ.get("OBSIDIAN_SQLITE_SKIP_RAW_CHAT_LOGS", "1") != "0"
+
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -344,6 +349,13 @@ END;
 """
 
 
+def should_index_sqlite(note) -> bool:
+    """是否进 SQLite FTS5。默认跳过 Raw Chat Logs（巨型、低检索价值）。"""
+    if SQLITE_SKIP_RAW_CHAT_LOGS and note.rel_path.startswith(CHROMA_RAW_CHAT_PREFIXES):
+        return False
+    return True
+
+
 def init_sqlite():
     conn = sqlite3.connect(str(DB_PATH))
     conn.execute("PRAGMA journal_mode=WAL")
@@ -401,7 +413,7 @@ def search_sqlite(query: str, limit: int = 10) -> list[dict]:
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute(
-            """SELECT n.path, n.title, n.summary, n.tags, n.mtime,
+            """SELECT n.path, n.title, n.summary, n.tags, n.mtime, n.hash,
                       snippet(notes_fts, 1, '<mark>', '</mark>', '...', 30) AS excerpt
                FROM notes n
                JOIN notes_fts ON n.rowid = notes_fts.rowid
@@ -599,6 +611,16 @@ def cmd_backup(full: bool = False, quiet: bool = False):
         # （对比 SQLite 现有记录 vs 当前文件集合）
         changed = notes
         deleted = _find_stale_db_paths([n.rel_path for n in notes])
+        # 额外清理：被 SQLITE_SKIP_RAW_CHAT_LOGS 跳过但仍残留的 Chat Logs 记录
+        if SQLITE_SKIP_RAW_CHAT_LOGS:
+            _conn = init_sqlite()
+            try:
+                _rows = _conn.execute("SELECT path FROM notes").fetchall()
+                for (_p,) in _rows:
+                    if _p.startswith(CHROMA_RAW_CHAT_PREFIXES):
+                        deleted.append(_p)
+            finally:
+                _conn.close()
         current_paths = [n.rel_path for n in notes]
     else:
         changed, deleted, current_paths = find_changed_notes(notes, state)
@@ -618,9 +640,12 @@ def cmd_backup(full: bool = False, quiet: bool = False):
         print("📝 SQLite FTS5 写入...")
     conn = init_sqlite()
     for note in changed:
-        upsert_note_sqlite(conn, note)
-        if not quiet:
-            print(f"  ✅ {note.rel_path}")
+        if should_index_sqlite(note):
+            upsert_note_sqlite(conn, note)
+            if not quiet:
+                print(f"  ✅ {note.rel_path}")
+        elif not quiet:
+            print(f"  ⏭️  {note.rel_path} (Raw Chat Logs, 跳过 FTS)")
     for path in deleted:
         delete_note_sqlite(conn, path)
         if not quiet:
@@ -708,8 +733,29 @@ def cmd_stats():
     print(f"📋 状态跟踪: {state_count} 篇")
 
 
-def cmd_search(query: str, semantic: bool = False, limit: int = 10):
-    """搜索笔记"""
+def revalidate_note(path: str) -> tuple[str, str, str]:
+    """回读磁盘当前 Markdown 原文，校验索引是否陈旧。
+
+    返回 (status, fresh_hash, fresh_excerpt)：
+      status: ok=一致 / missing=文件已删 / changed=内容已变(索引陈旧) / unreadable=不可读
+    Canonical Read 边界：检索命中后必须回读原文，不信任索引摘要。
+    """
+    p = VAULT_PATH / path
+    if not p.exists():
+        return ("missing", "", "")
+    try:
+        raw = p.read_text(encoding="utf-8", errors="replace")
+        fresh_hash = hashlib.sha256(p.read_bytes()).hexdigest()
+    except OSError:
+        return ("unreadable", "", "")
+    # 提取摘要（前 300 字，去掉 frontmatter 更准确，这里用全文截断即可）
+    fm, body = parse_frontmatter(raw)
+    excerpt = body.strip()[:300].replace("\n", " ").strip()
+    return ("ok", fresh_hash, excerpt)
+
+
+def cmd_search(query: str, semantic: bool = False, revalidate: bool = True, limit: int = 10):
+    """搜索笔记；默认回读原文重验（Canonical Read 边界）。"""
     if not DB_PATH.exists():
         print("❌ 数据库不存在，请先运行备份")
         return
@@ -725,7 +771,20 @@ def cmd_search(query: str, semantic: bool = False, limit: int = 10):
             print(f"  路径: {r['path']}")
             print(f"  标签: {r['tags']}")
             print(f"  相似度: {1 - r['distance']:.3f}")
-            print(f"  摘要: {r['excerpt'][:150]}...")
+            if revalidate:
+                status, fhash, fexc = revalidate_note(r["path"])
+                if status == "ok":
+                    print(f"  ✅ 已回读验证 (hash={fhash[:8]})")
+                    if fexc:
+                        print(f"  原文摘要: {fexc[:150]}...")
+                elif status == "missing":
+                    print(f"  ⚠️ 文件已删除（索引陈旧，请重新备份）")
+                elif status == "changed":
+                    print(f"  ⚠️ 内容已变（索引陈旧，请重新备份）")
+                else:
+                    print(f"  ⚠️ 不可读")
+            else:
+                print(f"  摘要: {r['excerpt'][:150]}...")
     else:
         print(f"🔍 FTS5 搜索: {query}")
         print("=" * 50)
@@ -737,7 +796,24 @@ def cmd_search(query: str, semantic: bool = False, limit: int = 10):
             print(f"  路径: {r['path']}")
             print(f"  标签: {r['tags']}")
             print(f"  时间: {r['mtime']}")
-            print(f"  片段: {r.get('excerpt', r['summary'][:200])}")
+            if revalidate:
+                status, fhash, fexc = revalidate_note(r["path"])
+                # 对比索引 hash 与磁盘当前 hash，检测陈旧
+                idx_hash = r.get("hash", "")
+                if status == "ok" and idx_hash and fhash != idx_hash:
+                    status = "changed"
+                if status == "ok":
+                    print(f"  ✅ 已回读验证 (hash={fhash[:8]})")
+                    if fexc:
+                        print(f"  原文摘要: {fexc[:150]}...")
+                elif status == "missing":
+                    print(f"  ⚠️ 文件已删除（索引陈旧，请重新备份）")
+                elif status == "changed":
+                    print(f"  ⚠️ 内容已变（索引陈旧，请重新备份）")
+                else:
+                    print(f"  ⚠️ 不可读")
+            else:
+                print(f"  片段: {r.get('excerpt', r['summary'][:200])}")
 
 
 # ── CLI 入口 ──────────────────────────────────────────
@@ -774,13 +850,14 @@ def main():
     parser.add_argument("--search", type=str, help="搜索笔记内容")
     parser.add_argument("--semantic", action="store_true", help="语义搜索（ChromaDB）")
     parser.add_argument("--limit", type=int, default=10, help="搜索结果数量")
+    parser.add_argument("--no-revalidate", action="store_true", help="跳过回读原文重验（Canonical Read）")
 
     args = parser.parse_args()
 
     if args.stats:
         cmd_stats()
     elif args.search:
-        cmd_search(args.search, semantic=args.semantic, limit=args.limit)
+        cmd_search(args.search, semantic=args.semantic, revalidate=not args.no_revalidate, limit=args.limit)
     else:
         cmd_backup(full=args.full, quiet=args.quiet)
 

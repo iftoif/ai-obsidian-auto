@@ -7,7 +7,6 @@
 #   OBSIDIAN_VAULT_PATH — 服务器 vault 路径（默认 $HOME/obsidian）
 set -uo pipefail
 
-
 # 配置兜底：优先环境变量（systemd 注入），回退 source 仓库 .env（手工部署路径）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -79,8 +78,7 @@ if [ -d "$NODES_DIR" ]; then
   for f in "$NODES_DIR"/*.json; do
     [ -f "$f" ] || continue
     fname=$(basename "$f")
-    # 跳过主 Mac 与服务器自身的标记（主 Mac 已单独处理；服务器自身标记用 SERVER_HOSTNAME 匹配）
-    # 注意：SERVER_HOSTNAME 为空时 case 模式会变成 ** 匹配一切，必须先判非空
+    # 跳过服务器自身的标记（SERVER_HOSTNAME 为空时 case 模式会变 ** 匹配一切，先判非空）
     if [ -n "$SERVER_HOSTNAME" ]; then
       case "$fname" in
         *${SERVER_HOSTNAME}*) continue ;;

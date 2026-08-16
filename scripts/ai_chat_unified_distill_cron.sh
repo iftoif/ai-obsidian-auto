@@ -129,6 +129,12 @@ if [ "${1:-}" = "--dry-run" ]; then
   printf 'provider=%s\nmodel=%s\nmanifest_limit=%s\nvision=%s\ntool_use=%s\nmultilingual=%s\nvault=%s\nfiles:\n%s\n' "$PROVIDER" "$MODEL" "$MANIFEST_LIMIT" "$(echo "$VISION_PROVIDERS" | tr ',' '\n' | grep -qx "$PROVIDER" && echo yes || echo no)" "$(echo "$TOOL_USE_PROVIDERS" | tr ',' '\n' | grep -qx "$PROVIDER" && echo yes || echo no)" "$(echo "$MULTILINGUAL_PROVIDERS" | tr ',' '\n' | grep -qx "$PROVIDER" && echo yes || echo no)" "$VAULT" "$MANIFEST"
   exit 0
 fi
+# ── Write Intent 回执（T1）：蒸馏前快照知识层（dry-run 之后，真实蒸馏前）──
+RECEIPT_SCRIPT="$SCRIPT_DIR/distill_receipt.py"
+RECEIPT_RC=0
+if [ -x "$RECEIPT_SCRIPT" ] || command -v python3 >/dev/null 2>&1; then
+  python3 "$RECEIPT_SCRIPT" snapshot --vault "$VAULT" --state-dir "$STATE_DIR"
+fi
 # fallback 链：主 provider 失败时依次降级，避免额度耗尽导致蒸馏中断
 FALLBACK_PROVIDERS=()
 FALLBACK_MODELS=()
@@ -167,6 +173,7 @@ run_distill() {
   if grep -qiE "^API call failed after|^No API key found|^No usable credentials|^HTTP [45][0-9][0-9]" "$out_file"; then
     failed=1
   fi
+  # 空输出或只有 session_id 也是失败
   local lines
   lines=$(wc -l < "$out_file" 2>/dev/null || echo 0)
   if [ "$lines" -le 2 ]; then
@@ -221,5 +228,8 @@ for rel in manifest:
 data["last_success_at"]=datetime.now().astimezone().isoformat()
 out.write_text(json.dumps(data,ensure_ascii=False,indent=2)+"\n")
 PY
+  # ── Write Intent 回执（T1）：蒸馏后 diff + receipt ──
+  printf "%s\n" "$MANIFEST" | python3 "$RECEIPT_SCRIPT" verify --vault "$VAULT" --state-dir "$STATE_DIR" --provider "$PROVIDER" --model "$MODEL"
+  RECEIPT_RC=$?
 fi
 exit "$RC"
